@@ -23,7 +23,7 @@ public class RefreshTokenService {
     @Value("${application.security.jwt.refresh-token.expiration}")
     private long refreshTokenDurationMs;
 
-    public RefreshToken createRefreshToken(Long userId) {
+    public RefreshToken createRefreshToken(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
@@ -52,7 +52,14 @@ public class RefreshTokenService {
     }
 
     @Transactional
-    public void deleteByUserId(Long userId) {
+    public void deleteByUserId(UUID userId) {
         userRepository.findById(userId).ifPresent(refreshTokenRepository::deleteByUser);
+    }
+
+    @Transactional
+    public void deleteByToken(String token) {
+        if (token != null && !token.isBlank()) {
+            refreshTokenRepository.deleteByToken(token);
+        }
     }
 }

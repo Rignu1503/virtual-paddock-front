@@ -2,6 +2,8 @@ package com.virtual_paddock.backend.api.dtos.championship;
 
 import lombok.*;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -9,17 +11,17 @@ import lombok.*;
 @Builder
 public class ChampionshipResponse {
 
-    private Long id;
+    private UUID id;
     private String gameName;
     private String category;
     private String pointsSystem;
     private String sprintPointsSystem;
     private Integer fastestLapPoints;
     private Integer polePoints;
-    private Long pointsSystemId;
+    private UUID pointsSystemId;
     private String pointsSystemName;
-    private Long sprintPointsSystemId;
+    private UUID sprintPointsSystemId;
     private String sprintPointsSystemName;
-    private Long leagueId;
+    private UUID leagueId;
     private String leagueName;
 }

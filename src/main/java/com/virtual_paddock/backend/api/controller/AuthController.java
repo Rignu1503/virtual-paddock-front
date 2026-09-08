@@ -12,8 +12,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,6 +28,9 @@ public class AuthController {
 
     @Value("${application.security.jwt.refresh-token.expiration}")
     private int refreshTokenDurationMs;
+
+    @Value("${application.security.cookie.secure:false}")
+    private boolean isSecureCookie;
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(
@@ -74,17 +80,25 @@ public class AuthController {
         }
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<AuthResponse>> getCurrentUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Usuario no autenticado"));
+        }
+        AuthResponse currentUser = authService.getCurrentUser(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.ok("Usuario obtenido exitosamente", currentUser));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
             HttpServletRequest request,
             HttpServletResponse response) {
         
         String refreshTokenStr = extractRefreshTokenFromCookie(request);
-        if (refreshTokenStr != null) {
+        if (refreshTokenStr != null && !refreshTokenStr.isBlank()) {
             try {
-                // Para hacer el logout total deberíamos extraer el userId del token JWT o del refreshToken
-                // En una app real, podrías obtener el userId del SecurityContextHolder
-                // authService.logout(userId);
+                authService.logoutByToken(refreshTokenStr);
             } catch (Exception ignored) { }
         }
         
@@ -93,12 +107,15 @@ public class AuthController {
     }
 
     private void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
-        Cookie cookie = new Cookie("refresh_token", refreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true); // Requiere HTTPS en producción
-        cookie.setPath("/api/auth"); // Solo se envía a endpoints de auth
-        cookie.setMaxAge(refreshTokenDurationMs / 1000); // En segundos
-        response.addCookie(cookie);
+        String sameSite = isSecureCookie ? "None" : "Lax";
+        ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
+                .httpOnly(true)
+                .secure(isSecureCookie)
+                .path("/api/auth")
+                .maxAge(refreshTokenDurationMs / 1000)
+                .sameSite(sameSite)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     private String extractRefreshTokenFromCookie(HttpServletRequest request) {
@@ -114,11 +131,14 @@ public class AuthController {
     }
 
     private void cleanRefreshTokenCookie(HttpServletResponse response) {
-        Cookie cookie = new Cookie("refresh_token", null);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/api/auth");
-        cookie.setMaxAge(0); // Eliminar cookie
-        response.addCookie(cookie);
+        String sameSite = isSecureCookie ? "None" : "Lax";
+        ResponseCookie cookie = ResponseCookie.from("refresh_token", "")
+                .httpOnly(true)
+                .secure(isSecureCookie)
+                .path("/api/auth")
+                .maxAge(0)
+                .sameSite(sameSite)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 }

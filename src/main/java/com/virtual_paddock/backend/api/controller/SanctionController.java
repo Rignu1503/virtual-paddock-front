@@ -8,7 +8,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/sanctions")
@@ -18,13 +21,14 @@ public class SanctionController {
     private final ISanctionService sanctionService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
     public ResponseEntity<ApiResponse<SanctionResponse>> create(@Valid @RequestBody SanctionRequest request) {
         SanctionResponse response = sanctionService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Sanción creada exitosamente", response));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<SanctionResponse>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SanctionResponse>> getById(@PathVariable UUID id) {
         SanctionResponse response = sanctionService.getById(id);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
@@ -39,7 +43,7 @@ public class SanctionController {
 
     @GetMapping("/race-event/{raceEventId}")
     public ResponseEntity<ApiResponse<PageResponse<SanctionBasicResponse>>> getByRaceEventId(
-            @PathVariable Long raceEventId,
+            @PathVariable UUID raceEventId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         PageResponse<SanctionBasicResponse> response = sanctionService.getByRaceEventId(raceEventId, page, size);
@@ -48,7 +52,7 @@ public class SanctionController {
 
     @GetMapping("/driver/{driverId}")
     public ResponseEntity<ApiResponse<PageResponse<SanctionBasicResponse>>> getByDriverId(
-            @PathVariable Long driverId,
+            @PathVariable UUID driverId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         PageResponse<SanctionBasicResponse> response = sanctionService.getByDriverId(driverId, page, size);
@@ -56,15 +60,17 @@ public class SanctionController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
     public ResponseEntity<ApiResponse<SanctionResponse>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody SanctionUpdate update) {
         SanctionResponse response = sanctionService.update(id, update);
         return ResponseEntity.ok(ApiResponse.ok("Sanción actualizada exitosamente", response));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         sanctionService.delete(id);
         return ResponseEntity.ok(ApiResponse.ok("Sanción eliminada exitosamente", null));
     }

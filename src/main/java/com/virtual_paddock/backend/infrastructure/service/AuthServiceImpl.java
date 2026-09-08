@@ -33,10 +33,11 @@ public class AuthServiceImpl implements IAuthService {
             throw new IllegalArgumentException("El email ya está registrado");
         }
 
+        // Todo registro público de organizadores se asigna de forma blindada como LEAGUE_ADMIN
         User user = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
+                .role(com.virtual_paddock.backend.utils.enums.Role.LEAGUE_ADMIN)
                 .build();
 
         User savedUser = userRepository.save(user);
@@ -92,12 +93,32 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
-    public void logout(Long userId) {
+    public void logout(java.util.UUID userId) {
         refreshTokenService.deleteByUserId(userId);
     }
 
     @Override
-    public RefreshToken createRefreshToken(Long userId) {
+    public void logoutByToken(String refreshTokenStr) {
+        if (refreshTokenStr != null && !refreshTokenStr.isBlank()) {
+            refreshTokenService.deleteByToken(refreshTokenStr);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AuthResponse getCurrentUser(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado con email: " + email));
+
+        return AuthResponse.builder()
+                .userId(user.getId())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .build();
+    }
+
+    @Override
+    public RefreshToken createRefreshToken(java.util.UUID userId) {
         return refreshTokenService.createRefreshToken(userId);
     }
 }

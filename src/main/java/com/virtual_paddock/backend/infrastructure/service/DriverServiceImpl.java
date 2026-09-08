@@ -7,13 +7,17 @@ import com.virtual_paddock.backend.domain.entities.Team;
 import com.virtual_paddock.backend.domain.repositories.DriverRepository;
 import com.virtual_paddock.backend.domain.repositories.TeamRepository;
 import com.virtual_paddock.backend.infrastructure.abstract_service.IDriverService;
+import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.DriverMapper;
-import jakarta.persistence.EntityNotFoundException;
+import com.virtual_paddock.backend.utils.exeption.BadRequestException;
+import com.virtual_paddock.backend.utils.exeption.ErrorMessages;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -24,10 +28,15 @@ public class DriverServiceImpl implements IDriverService {
     private final TeamRepository teamRepository;
     private final DriverMapper driverMapper;
 
+    private Driver find(UUID id) {
+        return this.driverRepository.findById(id).orElseThrow(() ->
+                new BadRequestException(ErrorMessages.IdNotFound("Driver")));
+    }
+
     @Override
     public DriverResponse create(DriverRequest request) {
         Team team = teamRepository.findById(request.getTeamId())
-                .orElseThrow(() -> new EntityNotFoundException("Equipo no encontrado con ID: " + request.getTeamId()));
+                .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Team")));
         Driver driver = driverMapper.toEntity(request);
         driver.setTeam(team);
         Driver saved = driverRepository.save(driver);
@@ -36,9 +45,8 @@ public class DriverServiceImpl implements IDriverService {
 
     @Override
     @Transactional(readOnly = true)
-    public DriverResponse getById(Long id) {
-        Driver driver = driverRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Piloto no encontrado con ID: " + id));
+    public DriverResponse getById(UUID id) {
+        Driver driver = find(id);
         return driverMapper.toResponse(driver);
     }
 
@@ -46,24 +54,23 @@ public class DriverServiceImpl implements IDriverService {
     @Transactional(readOnly = true)
     public PageResponse<DriverBasicResponse> getAll(int page, int size) {
         Page<Driver> driverPage = driverRepository.findAll(PageRequest.of(page, size));
-        return buildPageResponse(driverPage);
+        return PageResponseHelper.fromPage(driverPage, driverMapper::toBasicResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<DriverBasicResponse> getByTeamId(Long teamId, int page, int size) {
+    public PageResponse<DriverBasicResponse> getByTeamId(UUID teamId, int page, int size) {
         Page<Driver> driverPage = driverRepository.findByTeamId(teamId, PageRequest.of(page, size));
-        return buildPageResponse(driverPage);
+        return PageResponseHelper.fromPage(driverPage, driverMapper::toBasicResponse);
     }
 
     @Override
-    public DriverResponse update(Long id, DriverUpdate update) {
-        Driver driver = driverRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Piloto no encontrado con ID: " + id));
+    public DriverResponse update(UUID id, DriverUpdate update) {
+        Driver driver = find(id);
 
         if (update.getTeamId() != null) {
             Team team = teamRepository.findById(update.getTeamId())
-                    .orElseThrow(() -> new EntityNotFoundException("Equipo no encontrado con ID: " + update.getTeamId()));
+                    .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Team")));
             driver.setTeam(team);
         }
 
@@ -73,21 +80,8 @@ public class DriverServiceImpl implements IDriverService {
     }
 
     @Override
-    public void delete(Long id) {
-        if (!driverRepository.existsById(id)) {
-            throw new EntityNotFoundException("Piloto no encontrado con ID: " + id);
-        }
-        driverRepository.deleteById(id);
-    }
-
-    private PageResponse<DriverBasicResponse> buildPageResponse(Page<Driver> page) {
-        return PageResponse.<DriverBasicResponse>builder()
-                .content(page.getContent().stream().map(driverMapper::toBasicResponse).toList())
-                .pageNumber(page.getNumber())
-                .pageSize(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .last(page.isLast())
-                .build();
+    public void delete(UUID id) {
+        Driver driver = find(id);
+        driverRepository.delete(driver);
     }
 }

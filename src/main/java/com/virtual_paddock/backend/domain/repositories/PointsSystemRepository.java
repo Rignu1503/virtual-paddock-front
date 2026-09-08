@@ -7,9 +7,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface PointsSystemRepository extends JpaRepository<PointsSystem, Long> {
-    List<PointsSystem> findByLeagueId(Long leagueId);
-    Page<PointsSystem> findByLeagueId(Long leagueId, Pageable pageable);
+public interface PointsSystemRepository extends JpaRepository<PointsSystem, UUID> {
+    List<PointsSystem> findByLeagueId(UUID leagueId);
+    Page<PointsSystem> findByLeagueId(UUID leagueId, Pageable pageable);
 }

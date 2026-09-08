@@ -6,8 +6,13 @@ import com.virtual_paddock.backend.utils.enums.SanctionType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.UUID;
+
 @Entity
-@Table(name = "sanctions")
+@Table(name = "sanctions", indexes = {
+    @Index(name = "idx_sanctions_event", columnList = "race_event_id"),
+    @Index(name = "idx_sanctions_driver", columnList = "driver_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,8 +21,8 @@ import lombok.*;
 public class Sanction {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

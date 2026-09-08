@@ -3,6 +3,8 @@ package com.virtual_paddock.backend.api.dtos.championship;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -24,7 +26,7 @@ public class ChampionshipUpdate {
 
     private Integer polePoints;
 
-    private Long pointsSystemId;
+    private UUID pointsSystemId;
 
-    private Long sprintPointsSystemId;
+    private UUID sprintPointsSystemId;
 }

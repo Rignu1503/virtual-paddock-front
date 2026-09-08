@@ -4,6 +4,8 @@ import com.virtual_paddock.backend.utils.enums.DriverStatus;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.util.UUID;
+
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class DriverUpdate {
     @Size(max = 100, message = "El nombre no puede exceder 100 caracteres")
@@ -22,5 +24,5 @@ public class DriverUpdate {
     private String carModel;
 
     private DriverStatus status;
-    private Long teamId;
+    private UUID teamId;
 }

@@ -3,6 +3,7 @@ package com.virtual_paddock.backend.api.dtos.pointssystem;
 import lombok.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -11,12 +12,12 @@ import java.util.List;
 @Builder
 public class PointsSystemResponse {
 
-    private Long id;
+    private UUID id;
     private String name;
     private String description;
     private Integer fastestLapPoints;
     private Integer polePoints;
-    private Long leagueId;
+    private UUID leagueId;
     private String leagueName;
     private List<PointRuleDto> rules;
 }

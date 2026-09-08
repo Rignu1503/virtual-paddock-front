@@ -11,6 +11,7 @@ public interface DriverMapper {
     @Mapping(target = "teamName", source = "team.name")
     DriverResponse toResponse(Driver driver);
 
+    @Mapping(target = "teamName", source = "team.name")
     DriverBasicResponse toBasicResponse(Driver driver);
 
     @Mapping(target = "id", ignore = true)

@@ -7,9 +7,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.UUID;
+
 @Repository
-public interface SanctionRepository extends JpaRepository<Sanction, Long> {
-    Page<Sanction> findByRaceEventId(Long raceEventId, Pageable pageable);
-    Page<Sanction> findByDriverId(Long driverId, Pageable pageable);
+public interface SanctionRepository extends JpaRepository<Sanction, UUID> {
+    Page<Sanction> findByRaceEventId(UUID raceEventId, Pageable pageable);
+    Page<Sanction> findByDriverId(UUID driverId, Pageable pageable);
     Page<Sanction> findByStatus(SanctionStatus status, Pageable pageable);
 }

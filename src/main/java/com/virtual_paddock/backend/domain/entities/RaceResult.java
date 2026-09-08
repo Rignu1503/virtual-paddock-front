@@ -3,8 +3,14 @@ package com.virtual_paddock.backend.domain.entities;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.UUID;
+
 @Entity
-@Table(name = "race_results")
+@Table(name = "race_results", indexes = {
+    @Index(name = "idx_race_results_event", columnList = "race_event_id"),
+    @Index(name = "idx_race_results_driver", columnList = "driver_id"),
+    @Index(name = "idx_race_results_event_pos", columnList = "race_event_id, position")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -13,8 +19,8 @@ import lombok.*;
 public class RaceResult {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     private Integer position; // Posición en su categoría
     

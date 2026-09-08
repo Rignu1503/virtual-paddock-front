@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import java.util.UUID;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class SeasonRequest {
@@ -12,5 +13,5 @@ public class SeasonRequest {
     private String seasonName;
 
     @NotNull(message = "El ID del campeonato es obligatorio")
-    private Long championshipId;
+    private UUID championshipId;
 }

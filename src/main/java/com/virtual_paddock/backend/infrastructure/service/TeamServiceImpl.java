@@ -7,13 +7,17 @@ import com.virtual_paddock.backend.domain.entities.Team;
 import com.virtual_paddock.backend.domain.repositories.LeagueRepository;
 import com.virtual_paddock.backend.domain.repositories.TeamRepository;
 import com.virtual_paddock.backend.infrastructure.abstract_service.ITeamService;
+import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.TeamMapper;
-import jakarta.persistence.EntityNotFoundException;
+import com.virtual_paddock.backend.utils.exeption.BadRequestException;
+import com.virtual_paddock.backend.utils.exeption.ErrorMessages;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -24,10 +28,15 @@ public class TeamServiceImpl implements ITeamService {
     private final LeagueRepository leagueRepository;
     private final TeamMapper teamMapper;
 
+    private Team find(UUID id) {
+        return this.teamRepository.findById(id).orElseThrow(() ->
+                new BadRequestException(ErrorMessages.IdNotFound("Team")));
+    }
+
     @Override
     public TeamResponse create(TeamRequest request) {
         League league = leagueRepository.findById(request.getLeagueId())
-                .orElseThrow(() -> new EntityNotFoundException("Liga no encontrada con ID: " + request.getLeagueId()));
+                .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("League")));
         Team team = teamMapper.toEntity(request);
         team.setLeague(league);
         Team saved = teamRepository.save(team);
@@ -36,9 +45,8 @@ public class TeamServiceImpl implements ITeamService {
 
     @Override
     @Transactional(readOnly = true)
-    public TeamResponse getById(Long id) {
-        Team team = teamRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Equipo no encontrado con ID: " + id));
+    public TeamResponse getById(UUID id) {
+        Team team = find(id);
         return teamMapper.toResponse(team);
     }
 
@@ -46,41 +54,27 @@ public class TeamServiceImpl implements ITeamService {
     @Transactional(readOnly = true)
     public PageResponse<TeamBasicResponse> getAll(int page, int size) {
         Page<Team> teamPage = teamRepository.findAll(PageRequest.of(page, size));
-        return buildPageResponse(teamPage);
+        return PageResponseHelper.fromPage(teamPage, teamMapper::toBasicResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<TeamBasicResponse> getByLeagueId(Long leagueId, int page, int size) {
+    public PageResponse<TeamBasicResponse> getByLeagueId(UUID leagueId, int page, int size) {
         Page<Team> teamPage = teamRepository.findByLeagueId(leagueId, PageRequest.of(page, size));
-        return buildPageResponse(teamPage);
+        return PageResponseHelper.fromPage(teamPage, teamMapper::toBasicResponse);
     }
 
     @Override
-    public TeamResponse update(Long id, TeamUpdate update) {
-        Team team = teamRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Equipo no encontrado con ID: " + id));
+    public TeamResponse update(UUID id, TeamUpdate update) {
+        Team team = find(id);
         teamMapper.updateEntityFromDto(update, team);
         Team updated = teamRepository.save(team);
         return teamMapper.toResponse(updated);
     }
 
     @Override
-    public void delete(Long id) {
-        if (!teamRepository.existsById(id)) {
-            throw new EntityNotFoundException("Equipo no encontrado con ID: " + id);
-        }
-        teamRepository.deleteById(id);
-    }
-
-    private PageResponse<TeamBasicResponse> buildPageResponse(Page<Team> page) {
-        return PageResponse.<TeamBasicResponse>builder()
-                .content(page.getContent().stream().map(teamMapper::toBasicResponse).toList())
-                .pageNumber(page.getNumber())
-                .pageSize(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .last(page.isLast())
-                .build();
+    public void delete(UUID id) {
+        Team team = find(id);
+        teamRepository.delete(team);
     }
 }

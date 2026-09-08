@@ -1,5 +1,7 @@
 package com.virtual_paddock.backend.api.dtos.raceevent;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.virtual_paddock.backend.infrastructure.config.FlexibleInstantDeserializer;
 import com.virtual_paddock.backend.utils.enums.EventStatus;
 import com.virtual_paddock.backend.utils.enums.RaceType;
 import jakarta.validation.constraints.NotBlank;
@@ -7,7 +9,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
-import java.time.LocalDate;
+import java.time.Instant;
+import java.util.UUID;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class RaceEventRequest {
@@ -19,7 +22,11 @@ public class RaceEventRequest {
     @Size(max = 150, message = "El nombre del circuito no puede exceder 150 caracteres")
     private String circuitName;
 
-    private LocalDate date;
+    @JsonDeserialize(using = FlexibleInstantDeserializer.class)
+    private Instant date;
+
+    @JsonDeserialize(using = FlexibleInstantDeserializer.class)
+    private Instant qualyDate;
 
     @NotNull(message = "El estado del evento es obligatorio")
     private EventStatus status;
@@ -27,6 +34,12 @@ public class RaceEventRequest {
     @Builder.Default
     private RaceType raceType = RaceType.NORMAL;
 
+    @Builder.Default
+    private String raceDuration = "45 Min";
+
+    @Builder.Default
+    private String qualyDuration = "15 Min";
+
     @NotNull(message = "El ID de la temporada es obligatorio")
-    private Long seasonId;
+    private UUID seasonId;
 }

@@ -7,13 +7,17 @@ import com.virtual_paddock.backend.domain.entities.Season;
 import com.virtual_paddock.backend.domain.repositories.RaceEventRepository;
 import com.virtual_paddock.backend.domain.repositories.SeasonRepository;
 import com.virtual_paddock.backend.infrastructure.abstract_service.IRaceEventService;
+import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.RaceEventMapper;
-import jakarta.persistence.EntityNotFoundException;
+import com.virtual_paddock.backend.utils.exeption.BadRequestException;
+import com.virtual_paddock.backend.utils.exeption.ErrorMessages;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -24,10 +28,15 @@ public class RaceEventServiceImpl implements IRaceEventService {
     private final SeasonRepository seasonRepository;
     private final RaceEventMapper raceEventMapper;
 
+    private RaceEvent find(UUID id) {
+        return this.raceEventRepository.findById(id).orElseThrow(() ->
+                new BadRequestException(ErrorMessages.IdNotFound("RaceEvent")));
+    }
+
     @Override
     public RaceEventResponse create(RaceEventRequest request) {
         Season season = seasonRepository.findById(request.getSeasonId())
-                .orElseThrow(() -> new EntityNotFoundException("Temporada no encontrada con ID: " + request.getSeasonId()));
+                .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Season")));
         RaceEvent raceEvent = raceEventMapper.toEntity(request);
         raceEvent.setSeason(season);
         RaceEvent saved = raceEventRepository.save(raceEvent);
@@ -36,9 +45,8 @@ public class RaceEventServiceImpl implements IRaceEventService {
 
     @Override
     @Transactional(readOnly = true)
-    public RaceEventResponse getById(Long id) {
-        RaceEvent raceEvent = raceEventRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Evento de carrera no encontrado con ID: " + id));
+    public RaceEventResponse getById(UUID id) {
+        RaceEvent raceEvent = find(id);
         return raceEventMapper.toResponse(raceEvent);
     }
 
@@ -46,41 +54,27 @@ public class RaceEventServiceImpl implements IRaceEventService {
     @Transactional(readOnly = true)
     public PageResponse<RaceEventBasicResponse> getAll(int page, int size) {
         Page<RaceEvent> raceEventPage = raceEventRepository.findAll(PageRequest.of(page, size));
-        return buildPageResponse(raceEventPage);
+        return PageResponseHelper.fromPage(raceEventPage, raceEventMapper::toBasicResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<RaceEventBasicResponse> getBySeasonId(Long seasonId, int page, int size) {
+    public PageResponse<RaceEventBasicResponse> getBySeasonId(UUID seasonId, int page, int size) {
         Page<RaceEvent> raceEventPage = raceEventRepository.findBySeasonId(seasonId, PageRequest.of(page, size));
-        return buildPageResponse(raceEventPage);
+        return PageResponseHelper.fromPage(raceEventPage, raceEventMapper::toBasicResponse);
     }
 
     @Override
-    public RaceEventResponse update(Long id, RaceEventUpdate update) {
-        RaceEvent raceEvent = raceEventRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Evento de carrera no encontrado con ID: " + id));
+    public RaceEventResponse update(UUID id, RaceEventUpdate update) {
+        RaceEvent raceEvent = find(id);
         raceEventMapper.updateEntityFromDto(update, raceEvent);
         RaceEvent updated = raceEventRepository.save(raceEvent);
         return raceEventMapper.toResponse(updated);
     }
 
     @Override
-    public void delete(Long id) {
-        if (!raceEventRepository.existsById(id)) {
-            throw new EntityNotFoundException("Evento de carrera no encontrado con ID: " + id);
-        }
-        raceEventRepository.deleteById(id);
-    }
-
-    private PageResponse<RaceEventBasicResponse> buildPageResponse(Page<RaceEvent> page) {
-        return PageResponse.<RaceEventBasicResponse>builder()
-                .content(page.getContent().stream().map(raceEventMapper::toBasicResponse).toList())
-                .pageNumber(page.getNumber())
-                .pageSize(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .last(page.isLast())
-                .build();
+    public void delete(UUID id) {
+        RaceEvent raceEvent = find(id);
+        raceEventRepository.delete(raceEvent);
     }
 }

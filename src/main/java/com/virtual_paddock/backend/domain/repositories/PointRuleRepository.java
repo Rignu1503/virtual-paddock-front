@@ -5,9 +5,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface PointRuleRepository extends JpaRepository<PointRule, Long> {
-    List<PointRule> findByPointsSystemIdOrderByPositionAsc(Long pointsSystemId);
-    void deleteByPointsSystemId(Long pointsSystemId);
+public interface PointRuleRepository extends JpaRepository<PointRule, UUID> {
+    List<PointRule> findByPointsSystemIdOrderByPositionAsc(UUID pointsSystemId);
+    void deleteByPointsSystemId(UUID pointsSystemId);
 }

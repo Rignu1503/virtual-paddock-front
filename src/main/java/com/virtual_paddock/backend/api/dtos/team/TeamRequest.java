@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import java.util.UUID;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class TeamRequest {
@@ -18,5 +19,5 @@ public class TeamRequest {
     private String colorHex;
 
     @NotNull(message = "El ID de la liga es obligatorio")
-    private Long leagueId;
+    private UUID leagueId;
 }

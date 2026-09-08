@@ -8,8 +8,10 @@ import com.virtual_paddock.backend.domain.entities.PointsSystem;
 import com.virtual_paddock.backend.domain.repositories.LeagueRepository;
 import com.virtual_paddock.backend.domain.repositories.PointsSystemRepository;
 import com.virtual_paddock.backend.infrastructure.abstract_service.IPointsSystemService;
+import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.PointsSystemMapper;
-import jakarta.persistence.EntityNotFoundException;
+import com.virtual_paddock.backend.utils.exeption.BadRequestException;
+import com.virtual_paddock.backend.utils.exeption.ErrorMessages;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -28,10 +31,15 @@ public class PointsSystemServiceImpl implements IPointsSystemService {
     private final LeagueRepository leagueRepository;
     private final PointsSystemMapper pointsSystemMapper;
 
+    private PointsSystem find(UUID id) {
+        return this.pointsSystemRepository.findById(id).orElseThrow(() ->
+                new BadRequestException(ErrorMessages.IdNotFound("PointsSystem")));
+    }
+
     @Override
     public PointsSystemResponse create(PointsSystemRequest request) {
         League league = leagueRepository.findById(request.getLeagueId())
-                .orElseThrow(() -> new EntityNotFoundException("Liga no encontrada con ID: " + request.getLeagueId()));
+                .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("League")));
 
         PointsSystem pointsSystem = pointsSystemMapper.toEntity(request);
         pointsSystem.setLeague(league);
@@ -52,37 +60,28 @@ public class PointsSystemServiceImpl implements IPointsSystemService {
 
     @Override
     @Transactional(readOnly = true)
-    public PointsSystemResponse getById(Long id) {
-        PointsSystem pointsSystem = pointsSystemRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Sistema de puntos no encontrado con ID: " + id));
+    public PointsSystemResponse getById(UUID id) {
+        PointsSystem pointsSystem = find(id);
         return pointsSystemMapper.toResponse(pointsSystem);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<PointsSystemResponse> getByLeagueId(Long leagueId) {
+    public List<PointsSystemResponse> getByLeagueId(UUID leagueId) {
         List<PointsSystem> list = pointsSystemRepository.findByLeagueId(leagueId);
         return list.stream().map(pointsSystemMapper::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<PointsSystemBasicResponse> getByLeagueIdPaged(Long leagueId, int page, int size) {
+    public PageResponse<PointsSystemBasicResponse> getByLeagueIdPaged(UUID leagueId, int page, int size) {
         Page<PointsSystem> paged = pointsSystemRepository.findByLeagueId(leagueId, PageRequest.of(page, size));
-        return PageResponse.<PointsSystemBasicResponse>builder()
-                .content(paged.getContent().stream().map(pointsSystemMapper::toBasicResponse).toList())
-                .pageNumber(paged.getNumber())
-                .pageSize(paged.getSize())
-                .totalElements(paged.getTotalElements())
-                .totalPages(paged.getTotalPages())
-                .last(paged.isLast())
-                .build();
+        return PageResponseHelper.fromPage(paged, pointsSystemMapper::toBasicResponse);
     }
 
     @Override
-    public PointsSystemResponse update(Long id, PointsSystemUpdate update) {
-        PointsSystem pointsSystem = pointsSystemRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Sistema de puntos no encontrado con ID: " + id));
+    public PointsSystemResponse update(UUID id, PointsSystemUpdate update) {
+        PointsSystem pointsSystem = find(id);
 
         pointsSystemMapper.updateEntityFromDto(update, pointsSystem);
 
@@ -100,10 +99,8 @@ public class PointsSystemServiceImpl implements IPointsSystemService {
     }
 
     @Override
-    public void delete(Long id) {
-        if (!pointsSystemRepository.existsById(id)) {
-            throw new EntityNotFoundException("Sistema de puntos no encontrado con ID: " + id);
-        }
-        pointsSystemRepository.deleteById(id);
+    public void delete(UUID id) {
+        PointsSystem pointsSystem = find(id);
+        pointsSystemRepository.delete(pointsSystem);
     }
 }

@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -30,7 +31,7 @@ public class PointsSystemRequest {
     private Integer polePoints = 0;
 
     @NotNull(message = "El ID de la liga es obligatorio")
-    private Long leagueId;
+    private UUID leagueId;
 
     @NotEmpty(message = "Debe definir al menos una regla de puntaje")
     @Valid

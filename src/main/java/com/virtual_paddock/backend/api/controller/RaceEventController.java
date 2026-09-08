@@ -8,7 +8,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/race-events")
@@ -18,13 +21,14 @@ public class RaceEventController {
     private final IRaceEventService raceEventService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
     public ResponseEntity<ApiResponse<RaceEventResponse>> create(@Valid @RequestBody RaceEventRequest request) {
         RaceEventResponse response = raceEventService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Evento de carrera creado exitosamente", response));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<RaceEventResponse>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<RaceEventResponse>> getById(@PathVariable UUID id) {
         RaceEventResponse response = raceEventService.getById(id);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
@@ -39,7 +43,7 @@ public class RaceEventController {
 
     @GetMapping("/season/{seasonId}")
     public ResponseEntity<ApiResponse<PageResponse<RaceEventBasicResponse>>> getBySeasonId(
-            @PathVariable Long seasonId,
+            @PathVariable UUID seasonId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         PageResponse<RaceEventBasicResponse> response = raceEventService.getBySeasonId(seasonId, page, size);
@@ -47,15 +51,17 @@ public class RaceEventController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
     public ResponseEntity<ApiResponse<RaceEventResponse>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody RaceEventUpdate update) {
         RaceEventResponse response = raceEventService.update(id, update);
         return ResponseEntity.ok(ApiResponse.ok("Evento de carrera actualizado exitosamente", response));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         raceEventService.delete(id);
         return ResponseEntity.ok(ApiResponse.ok("Evento de carrera eliminado exitosamente", null));
     }

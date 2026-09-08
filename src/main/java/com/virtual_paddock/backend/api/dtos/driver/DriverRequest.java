@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.util.UUID;
+
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class DriverRequest {
     @NotBlank(message = "El nombre del piloto es obligatorio")
@@ -28,5 +30,5 @@ public class DriverRequest {
     private DriverStatus status;
 
     @NotNull(message = "El ID del equipo es obligatorio")
-    private Long teamId;
+    private UUID teamId;
 }

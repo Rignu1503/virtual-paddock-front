@@ -5,9 +5,12 @@ import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
-@Table(name = "teams")
+@Table(name = "teams", indexes = {
+    @Index(name = "idx_teams_league", columnList = "league_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,8 +19,8 @@ import java.util.List;
 public class Team {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(nullable = false)
     private String name;

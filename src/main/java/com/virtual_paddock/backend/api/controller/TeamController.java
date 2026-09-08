@@ -8,7 +8,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/teams")
@@ -18,13 +21,14 @@ public class TeamController {
     private final ITeamService teamService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
     public ResponseEntity<ApiResponse<TeamResponse>> create(@Valid @RequestBody TeamRequest request) {
         TeamResponse response = teamService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Equipo creado exitosamente", response));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<TeamResponse>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<TeamResponse>> getById(@PathVariable UUID id) {
         TeamResponse response = teamService.getById(id);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
@@ -39,7 +43,7 @@ public class TeamController {
 
     @GetMapping("/league/{leagueId}")
     public ResponseEntity<ApiResponse<PageResponse<TeamBasicResponse>>> getByLeagueId(
-            @PathVariable Long leagueId,
+            @PathVariable UUID leagueId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         PageResponse<TeamBasicResponse> response = teamService.getByLeagueId(leagueId, page, size);
@@ -47,15 +51,17 @@ public class TeamController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
     public ResponseEntity<ApiResponse<TeamResponse>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody TeamUpdate update) {
         TeamResponse response = teamService.update(id, update);
         return ResponseEntity.ok(ApiResponse.ok("Equipo actualizado exitosamente", response));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         teamService.delete(id);
         return ResponseEntity.ok(ApiResponse.ok("Equipo eliminado exitosamente", null));
     }

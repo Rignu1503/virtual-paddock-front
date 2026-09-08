@@ -7,6 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.util.UUID;
+
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class SanctionRequest {
     @NotNull(message = "El tipo de sanción es obligatorio")
@@ -26,8 +28,8 @@ public class SanctionRequest {
     private Integer pointsDeduction; // Puntos a descontar del campeonato
 
     @NotNull(message = "El ID del evento es obligatorio")
-    private Long raceEventId;
+    private UUID raceEventId;
 
     @NotNull(message = "El ID del piloto es obligatorio")
-    private Long driverId;
+    private UUID driverId;
 }

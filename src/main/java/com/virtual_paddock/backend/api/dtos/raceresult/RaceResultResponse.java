@@ -1,10 +1,11 @@
 package com.virtual_paddock.backend.api.dtos.raceresult;
 
 import lombok.*;
+import java.util.UUID;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class RaceResultResponse {
-    private Long id;
+    private UUID id;
     private Integer position;
     private Integer overallPosition;
     private String category;
@@ -17,7 +18,7 @@ public class RaceResultResponse {
     private Integer penaltiesSeconds;
     private Integer lapsCompleted;
     private String status;
-    private Long raceEventId;
-    private Long driverId;
+    private UUID raceEventId;
+    private UUID driverId;
     private String driverName;
 }

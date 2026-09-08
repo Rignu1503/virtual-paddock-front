@@ -8,7 +8,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/drivers")
@@ -18,13 +21,14 @@ public class DriverController {
     private final IDriverService driverService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
     public ResponseEntity<ApiResponse<DriverResponse>> create(@Valid @RequestBody DriverRequest request) {
         DriverResponse response = driverService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Piloto creado exitosamente", response));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<DriverResponse>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<DriverResponse>> getById(@PathVariable UUID id) {
         DriverResponse response = driverService.getById(id);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
@@ -39,7 +43,7 @@ public class DriverController {
 
     @GetMapping("/team/{teamId}")
     public ResponseEntity<ApiResponse<PageResponse<DriverBasicResponse>>> getByTeamId(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         PageResponse<DriverBasicResponse> response = driverService.getByTeamId(teamId, page, size);
@@ -47,15 +51,17 @@ public class DriverController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
     public ResponseEntity<ApiResponse<DriverResponse>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody DriverUpdate update) {
         DriverResponse response = driverService.update(id, update);
         return ResponseEntity.ok(ApiResponse.ok("Piloto actualizado exitosamente", response));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         driverService.delete(id);
         return ResponseEntity.ok(ApiResponse.ok("Piloto eliminado exitosamente", null));
     }

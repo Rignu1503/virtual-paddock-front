@@ -4,12 +4,13 @@ import com.virtual_paddock.backend.api.dtos.PageResponse;
 import com.virtual_paddock.backend.api.dtos.pointssystem.*;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface IPointsSystemService {
     PointsSystemResponse create(PointsSystemRequest request);
-    PointsSystemResponse getById(Long id);
-    List<PointsSystemResponse> getByLeagueId(Long leagueId);
-    PageResponse<PointsSystemBasicResponse> getByLeagueIdPaged(Long leagueId, int page, int size);
-    PointsSystemResponse update(Long id, PointsSystemUpdate update);
-    void delete(Long id);
+    PointsSystemResponse getById(UUID id);
+    List<PointsSystemResponse> getByLeagueId(UUID leagueId);
+    PageResponse<PointsSystemBasicResponse> getByLeagueIdPaged(UUID leagueId, int page, int size);
+    PointsSystemResponse update(UUID id, PointsSystemUpdate update);
+    void delete(UUID id);
 }

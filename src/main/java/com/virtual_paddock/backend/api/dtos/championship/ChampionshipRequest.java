@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -27,9 +29,9 @@ public class ChampionshipRequest {
 
     private Integer polePoints; // Puntos por pole position
 
-    private Long pointsSystemId;
-    private Long sprintPointsSystemId;
+    private UUID pointsSystemId;
+    private UUID sprintPointsSystemId;
 
     @NotNull(message = "El ID de la liga es obligatorio")
-    private Long leagueId;
+    private UUID leagueId;
 }

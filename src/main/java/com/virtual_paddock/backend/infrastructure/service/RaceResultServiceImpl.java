@@ -2,8 +2,6 @@ package com.virtual_paddock.backend.infrastructure.service;
 
 import com.virtual_paddock.backend.api.dtos.PageResponse;
 import com.virtual_paddock.backend.api.dtos.raceresult.*;
-import java.util.List;
-import java.util.Map;
 import com.virtual_paddock.backend.domain.entities.Driver;
 import com.virtual_paddock.backend.domain.entities.RaceEvent;
 import com.virtual_paddock.backend.domain.entities.RaceResult;
@@ -11,13 +9,22 @@ import com.virtual_paddock.backend.domain.repositories.DriverRepository;
 import com.virtual_paddock.backend.domain.repositories.RaceEventRepository;
 import com.virtual_paddock.backend.domain.repositories.RaceResultRepository;
 import com.virtual_paddock.backend.infrastructure.abstract_service.IRaceResultService;
+import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.RaceResultMapper;
-import jakarta.persistence.EntityNotFoundException;
+import com.virtual_paddock.backend.utils.exeption.BadRequestException;
+import com.virtual_paddock.backend.utils.exeption.ErrorMessages;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,33 +37,39 @@ public class RaceResultServiceImpl implements IRaceResultService {
     private final RaceResultMapper raceResultMapper;
     private final RaceCalculationService raceCalculationService;
 
-    @Override
-    public List<RaceResultResponse> processBatchResults(Long raceEventId, RaceResultBulkRequest request) {
-        RaceEvent raceEvent = raceEventRepository.findById(raceEventId)
-                .orElseThrow(() -> new EntityNotFoundException("Evento de carrera no encontrado con ID: " + raceEventId));
+    private RaceResult find(UUID id) {
+        return this.raceResultRepository.findById(id).orElseThrow(() ->
+                new BadRequestException(ErrorMessages.IdNotFound("RaceResult")));
+    }
 
-        // Validar que todos los driverId sean válidos y positivos
+    @Override
+    @CacheEvict(value = {"driverStandings", "teamStandings"}, allEntries = true)
+    public List<RaceResultResponse> processBatchResults(UUID raceEventId, RaceResultBulkRequest request) {
+        RaceEvent raceEvent = raceEventRepository.findById(raceEventId)
+                .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("RaceEvent")));
+
+        // Validar que todos los driverId sean válidos
         for (RaceResultBulkItemRequest item : request.getResults()) {
-            if (item.getDriverId() == null || item.getDriverId() <= 0) {
-                throw new IllegalArgumentException("No se pueden guardar resultados con pilotos no emparejados. Por favor empareje al piloto: " 
+            if (item.getDriverId() == null) {
+                throw new BadRequestException("No se pueden guardar resultados con pilotos no emparejados. Por favor empareje al piloto: " 
                         + (item.getDriverName() != null ? item.getDriverName() : "Piloto Desconocido"));
             }
         }
 
         // Obtener todos los IDs de pilotos involucrados
-        List<Long> driverIds = request.getResults().stream()
+        List<UUID> driverIds = request.getResults().stream()
                 .map(RaceResultBulkItemRequest::getDriverId)
                 .toList();
 
         List<Driver> drivers = driverRepository.findAllById(driverIds);
         if (drivers.size() != driverIds.size()) {
-            throw new EntityNotFoundException("Uno o más pilotos no fueron encontrados en la base de datos");
+            throw new BadRequestException("Uno o más pilotos no fueron encontrados en la base de datos");
         }
 
-        Map<Long, Driver> driversMap = drivers.stream()
-                .collect(java.util.stream.Collectors.toMap(Driver::getId, d -> d));
+        Map<UUID, Driver> driversMap = drivers.stream()
+                .collect(Collectors.toMap(Driver::getId, d -> d));
 
-        // Eliminar resultados previos de este evento para reemplazarlos con el cálculo nuevo
+        // Eliminar resultados previos de este evento con consulta masiva eficiente
         raceResultRepository.deleteByRaceEventId(raceEventId);
 
         // Procesar con el motor de cálculo de carrera (tiempos, penalizaciones, multiclase, puntos)
@@ -72,23 +85,23 @@ public class RaceResultServiceImpl implements IRaceResultService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<RaceResultResponse> previewBatchResults(Long raceEventId, RaceResultBulkRequest request) {
+    public List<RaceResultResponse> previewBatchResults(UUID raceEventId, RaceResultBulkRequest request) {
         RaceEvent raceEvent = raceEventRepository.findById(raceEventId)
-                .orElseThrow(() -> new EntityNotFoundException("Evento de carrera no encontrado con ID: " + raceEventId));
+                .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("RaceEvent")));
 
-        List<Long> driverIds = request.getResults().stream()
+        List<UUID> driverIds = request.getResults().stream()
                 .map(RaceResultBulkItemRequest::getDriverId)
-                .filter(id -> id != null && id > 0)
+                .filter(Objects::nonNull)
                 .toList();
 
         List<Driver> drivers = driverRepository.findAllById(driverIds);
-        Map<Long, Driver> driversMap = drivers.stream()
-                .collect(java.util.stream.Collectors.toMap(Driver::getId, d -> d));
+        Map<UUID, Driver> driversMap = drivers.stream()
+                .collect(Collectors.toMap(Driver::getId, d -> d));
 
-        // Inyectar pilotos ficticios/mocks para los que no se emparejaron (IDs negativos o nulos)
+        // Inyectar pilotos ficticios/mocks para los que no se emparejaron (IDs nulos o no existentes)
         for (RaceResultBulkItemRequest item : request.getResults()) {
-            if (item.getDriverId() == null || item.getDriverId() <= 0) {
-                Long mockId = item.getDriverId() != null ? item.getDriverId() : -System.nanoTime();
+            if (item.getDriverId() == null) {
+                UUID mockId = UUID.randomUUID();
                 item.setDriverId(mockId);
                 Driver mockDriver = Driver.builder()
                         .id(mockId)
@@ -119,9 +132,9 @@ public class RaceResultServiceImpl implements IRaceResultService {
     }
 
     @Override
-    public List<RaceResultResponse> recalculateEventStandings(Long raceEventId) {
+    public List<RaceResultResponse> recalculateEventStandings(UUID raceEventId) {
         RaceEvent raceEvent = raceEventRepository.findById(raceEventId)
-                .orElseThrow(() -> new EntityNotFoundException("Evento de carrera no encontrado con ID: " + raceEventId));
+                .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("RaceEvent")));
 
         List<RaceResult> currentResults = raceResultRepository.findByRaceEventId(raceEventId);
         if (currentResults.isEmpty()) {
@@ -148,11 +161,12 @@ public class RaceResultServiceImpl implements IRaceResultService {
     }
 
     @Override
+    @CacheEvict(value = {"driverStandings", "teamStandings"}, allEntries = true)
     public RaceResultResponse create(RaceResultRequest request) {
         RaceEvent raceEvent = raceEventRepository.findById(request.getRaceEventId())
-                .orElseThrow(() -> new EntityNotFoundException("Evento de carrera no encontrado con ID: " + request.getRaceEventId()));
+                .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("RaceEvent")));
         Driver driver = driverRepository.findById(request.getDriverId())
-                .orElseThrow(() -> new EntityNotFoundException("Piloto no encontrado con ID: " + request.getDriverId()));
+                .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Driver")));
 
         RaceResult raceResult = raceResultMapper.toEntity(request);
         raceResult.setRaceEvent(raceEvent);
@@ -163,51 +177,38 @@ public class RaceResultServiceImpl implements IRaceResultService {
 
     @Override
     @Transactional(readOnly = true)
-    public RaceResultResponse getById(Long id) {
-        RaceResult raceResult = raceResultRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Resultado no encontrado con ID: " + id));
+    public RaceResultResponse getById(UUID id) {
+        RaceResult raceResult = find(id);
         return raceResultMapper.toResponse(raceResult);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<RaceResultBasicResponse> getByRaceEventId(Long raceEventId, int page, int size) {
+    public PageResponse<RaceResultBasicResponse> getByRaceEventId(UUID raceEventId, int page, int size) {
         Page<RaceResult> resultPage = raceResultRepository.findByRaceEventId(raceEventId, PageRequest.of(page, size));
-        return buildPageResponse(resultPage);
+        return PageResponseHelper.fromPage(resultPage, raceResultMapper::toBasicResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<RaceResultBasicResponse> getByDriverId(Long driverId, int page, int size) {
+    public PageResponse<RaceResultBasicResponse> getByDriverId(UUID driverId, int page, int size) {
         Page<RaceResult> resultPage = raceResultRepository.findByDriverId(driverId, PageRequest.of(page, size));
-        return buildPageResponse(resultPage);
+        return PageResponseHelper.fromPage(resultPage, raceResultMapper::toBasicResponse);
     }
 
     @Override
-    public RaceResultResponse update(Long id, RaceResultUpdate update) {
-        RaceResult raceResult = raceResultRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Resultado no encontrado con ID: " + id));
+    @CacheEvict(value = {"driverStandings", "teamStandings"}, allEntries = true)
+    public RaceResultResponse update(UUID id, RaceResultUpdate update) {
+        RaceResult raceResult = find(id);
         raceResultMapper.updateEntityFromDto(update, raceResult);
         RaceResult updated = raceResultRepository.save(raceResult);
         return raceResultMapper.toResponse(updated);
     }
 
     @Override
-    public void delete(Long id) {
-        if (!raceResultRepository.existsById(id)) {
-            throw new EntityNotFoundException("Resultado no encontrado con ID: " + id);
-        }
-        raceResultRepository.deleteById(id);
-    }
-
-    private PageResponse<RaceResultBasicResponse> buildPageResponse(Page<RaceResult> page) {
-        return PageResponse.<RaceResultBasicResponse>builder()
-                .content(page.getContent().stream().map(raceResultMapper::toBasicResponse).toList())
-                .pageNumber(page.getNumber())
-                .pageSize(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .last(page.isLast())
-                .build();
+    @CacheEvict(value = {"driverStandings", "teamStandings"}, allEntries = true)
+    public void delete(UUID id) {
+        RaceResult raceResult = find(id);
+        raceResultRepository.delete(raceResult);
     }
 }

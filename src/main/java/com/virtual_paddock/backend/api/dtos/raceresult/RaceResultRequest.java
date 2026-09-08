@@ -3,6 +3,7 @@ package com.virtual_paddock.backend.api.dtos.raceresult;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Min;
 import lombok.*;
+import java.util.UUID;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class RaceResultRequest {
@@ -23,8 +24,8 @@ public class RaceResultRequest {
     private String status;
 
     @NotNull(message = "El ID del evento es obligatorio")
-    private Long raceEventId;
+    private UUID raceEventId;
 
     @NotNull(message = "El ID del piloto es obligatorio")
-    private Long driverId;
+    private UUID driverId;
 }

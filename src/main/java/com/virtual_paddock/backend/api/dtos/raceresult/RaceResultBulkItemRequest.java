@@ -1,7 +1,7 @@
 package com.virtual_paddock.backend.api.dtos.raceresult;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -10,8 +10,7 @@ import lombok.*;
 @Builder
 public class RaceResultBulkItemRequest {
 
-    @NotNull(message = "El ID del piloto es obligatorio")
-    private Long driverId;
+    private UUID driverId;
 
     /**
      * Nombre del piloto (útil para previsualizaciones e importaciones).

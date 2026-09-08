@@ -6,18 +6,23 @@ import com.virtual_paddock.backend.domain.entities.*;
 import com.virtual_paddock.backend.domain.repositories.RaceEventRepository;
 import com.virtual_paddock.backend.domain.repositories.SanctionRepository;
 import com.virtual_paddock.backend.domain.repositories.SeasonRepository;
+import com.virtual_paddock.backend.infrastructure.helper.StandingsCalculatorHelper;
 import com.virtual_paddock.backend.utils.enums.DriverStatus;
-import jakarta.persistence.EntityNotFoundException;
+import com.virtual_paddock.backend.utils.exeption.BadRequestException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
@@ -34,8 +39,17 @@ class StandingsServiceImplTest {
     @Mock
     private SanctionRepository sanctionRepository;
 
+    @Spy
+    private StandingsCalculatorHelper standingsCalculatorHelper = new StandingsCalculatorHelper();
+
     @InjectMocks
     private StandingsServiceImpl standingsService;
+
+    private UUID seasonId;
+    private UUID team1Id;
+    private UUID driver1Id;
+    private UUID driver2Id;
+    private UUID raceEventId;
 
     private Season season;
     private RaceEvent raceEvent;
@@ -45,16 +59,22 @@ class StandingsServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        seasonId = UUID.randomUUID();
+        team1Id = UUID.randomUUID();
+        driver1Id = UUID.randomUUID();
+        driver2Id = UUID.randomUUID();
+        raceEventId = UUID.randomUUID();
+
         season = new Season();
-        season.setId(1L);
+        season.setId(seasonId);
         season.setSeasonName("Temporada 2026");
 
         team1 = new Team();
-        team1.setId(10L);
+        team1.setId(team1Id);
         team1.setName("Red Bull Racing");
 
         driver1 = new Driver();
-        driver1.setId(1L);
+        driver1.setId(driver1Id);
         driver1.setName("Max Verstappen");
         driver1.setGamertag("MaxV");
         driver1.setCarNumber("1");
@@ -63,7 +83,7 @@ class StandingsServiceImplTest {
         driver1.setStatus(DriverStatus.ACTIVE);
 
         driver2 = new Driver();
-        driver2.setId(2L);
+        driver2.setId(driver2Id);
         driver2.setName("Sergio Perez");
         driver2.setGamertag("Checo");
         driver2.setCarNumber("11");
@@ -72,17 +92,17 @@ class StandingsServiceImplTest {
         driver2.setStatus(DriverStatus.ACTIVE);
 
         raceEvent = new RaceEvent();
-        raceEvent.setId(100L);
+        raceEvent.setId(raceEventId);
         raceEvent.setSeason(season);
         raceEvent.setRaceResults(new ArrayList<>());
-        raceEvent.setSanctions(new ArrayList<>());
+        raceEvent.setSanctions(new HashSet<>());
     }
 
     @Test
     void getDriverStandings_success_withTieBreakerAndSanction() {
         // Driver 1: Posición 1, 25 puntos, Vuelta rápida
         RaceResult result1 = new RaceResult();
-        result1.setId(1L);
+        result1.setId(UUID.randomUUID());
         result1.setDriver(driver1);
         result1.setPosition(1);
         result1.setPoints(25);
@@ -92,7 +112,7 @@ class StandingsServiceImplTest {
 
         // Driver 2: Posición 2, 18 puntos
         RaceResult result2 = new RaceResult();
-        result2.setId(2L);
+        result2.setId(UUID.randomUUID());
         result2.setDriver(driver2);
         result2.setPosition(2);
         result2.setPoints(18);
@@ -102,26 +122,26 @@ class StandingsServiceImplTest {
 
         // Sanción a Driver 1: -5 puntos
         Sanction sanction = new Sanction();
-        sanction.setId(1L);
+        sanction.setId(UUID.randomUUID());
         sanction.setDriver(driver1);
         sanction.setRaceEvent(raceEvent);
         sanction.setPointsDeduction(5);
 
         raceEvent.setRaceResults(List.of(result1, result2));
-        raceEvent.setSanctions(List.of(sanction));
+        raceEvent.setSanctions(Set.of(sanction));
 
-        when(seasonRepository.findById(1L)).thenReturn(Optional.of(season));
-        when(raceEventRepository.findBySeasonId(1L)).thenReturn(List.of(raceEvent));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season));
+        when(raceEventRepository.findWithDetailsBySeasonId(seasonId)).thenReturn(List.of(raceEvent));
 
         // Act
-        List<DriverStandingResponse> standings = standingsService.getDriverStandings(1L, null);
+        List<DriverStandingResponse> standings = standingsService.getDriverStandings(seasonId, null);
 
         // Assert: Driver 1 tiene 25 - 5 = 20 puntos, Driver 2 tiene 18 puntos
         assertNotNull(standings);
         assertEquals(2, standings.size());
 
         DriverStandingResponse first = standings.get(0);
-        assertEquals(1L, first.getDriverId());
+        assertEquals(driver1Id, first.getDriverId());
         assertEquals("Max Verstappen", first.getDriverName());
         assertEquals(20, first.getPoints());
         assertEquals(1, first.getWins());
@@ -130,7 +150,7 @@ class StandingsServiceImplTest {
         assertEquals(1, first.getPosition());
 
         DriverStandingResponse second = standings.get(1);
-        assertEquals(2L, second.getDriverId());
+        assertEquals(driver2Id, second.getDriverId());
         assertEquals("Sergio Perez", second.getDriverName());
         assertEquals(18, second.getPoints());
         assertEquals(0, second.getWins());
@@ -141,14 +161,14 @@ class StandingsServiceImplTest {
     @Test
     void getDriverStandings_filterByCategory() {
         RaceResult result1 = new RaceResult();
-        result1.setId(1L);
+        result1.setId(UUID.randomUUID());
         result1.setDriver(driver1);
         result1.setPosition(1);
         result1.setPoints(25);
         result1.setCategory("PRO");
 
         RaceResult result2 = new RaceResult();
-        result2.setId(2L);
+        result2.setId(UUID.randomUUID());
         result2.setDriver(driver2);
         result2.setPosition(1);
         result2.setPoints(25);
@@ -156,11 +176,11 @@ class StandingsServiceImplTest {
 
         raceEvent.setRaceResults(List.of(result1, result2));
 
-        when(seasonRepository.findById(1L)).thenReturn(Optional.of(season));
-        when(raceEventRepository.findBySeasonId(1L)).thenReturn(List.of(raceEvent));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season));
+        when(raceEventRepository.findWithDetailsBySeasonId(seasonId)).thenReturn(List.of(raceEvent));
 
         // Act: filtrar solo "PRO"
-        List<DriverStandingResponse> proStandings = standingsService.getDriverStandings(1L, "PRO");
+        List<DriverStandingResponse> proStandings = standingsService.getDriverStandings(seasonId, "PRO");
 
         // Assert
         assertEquals(1, proStandings.size());
@@ -170,14 +190,14 @@ class StandingsServiceImplTest {
     @Test
     void getTeamStandings_success() {
         RaceResult result1 = new RaceResult();
-        result1.setId(1L);
+        result1.setId(UUID.randomUUID());
         result1.setDriver(driver1);
         result1.setPosition(1);
         result1.setPoints(25);
         result1.setCategory("PRO");
 
         RaceResult result2 = new RaceResult();
-        result2.setId(2L);
+        result2.setId(UUID.randomUUID());
         result2.setDriver(driver2);
         result2.setPosition(2);
         result2.setPoints(18);
@@ -185,16 +205,16 @@ class StandingsServiceImplTest {
 
         raceEvent.setRaceResults(List.of(result1, result2));
 
-        when(seasonRepository.findById(1L)).thenReturn(Optional.of(season));
-        when(raceEventRepository.findBySeasonId(1L)).thenReturn(List.of(raceEvent));
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season));
+        when(raceEventRepository.findWithDetailsBySeasonId(seasonId)).thenReturn(List.of(raceEvent));
 
         // Act
-        List<TeamStandingResponse> teamStandings = standingsService.getTeamStandings(1L, null);
+        List<TeamStandingResponse> teamStandings = standingsService.getTeamStandings(seasonId, null);
 
         // Assert: Ambos pilotos pertenecen a team1 (Red Bull Racing) -> 25 + 18 = 43 puntos
         assertEquals(1, teamStandings.size());
         TeamStandingResponse teamResponse = teamStandings.get(0);
-        assertEquals(10L, teamResponse.getTeamId());
+        assertEquals(team1Id, teamResponse.getTeamId());
         assertEquals("Red Bull Racing", teamResponse.getTeamName());
         assertEquals(43, teamResponse.getPoints());
         assertEquals(1, teamResponse.getWins());
@@ -204,8 +224,9 @@ class StandingsServiceImplTest {
 
     @Test
     void getDriverStandings_seasonNotFound_throwsException() {
-        when(seasonRepository.findById(99L)).thenReturn(Optional.empty());
+        UUID unknownId = UUID.randomUUID();
+        when(seasonRepository.findById(unknownId)).thenReturn(Optional.empty());
 
-        assertThrows(EntityNotFoundException.class, () -> standingsService.getDriverStandings(99L, null));
+        assertThrows(BadRequestException.class, () -> standingsService.getDriverStandings(unknownId, null));
     }
 }

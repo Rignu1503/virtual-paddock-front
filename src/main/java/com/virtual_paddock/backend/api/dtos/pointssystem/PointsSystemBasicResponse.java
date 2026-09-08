@@ -2,6 +2,8 @@ package com.virtual_paddock.backend.api.dtos.pointssystem;
 
 import lombok.*;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -9,7 +11,7 @@ import lombok.*;
 @Builder
 public class PointsSystemBasicResponse {
 
-    private Long id;
+    private UUID id;
     private String name;
     private String description;
     private Integer fastestLapPoints;

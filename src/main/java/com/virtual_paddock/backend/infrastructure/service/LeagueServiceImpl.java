@@ -4,16 +4,22 @@ import com.virtual_paddock.backend.api.dtos.PageResponse;
 import com.virtual_paddock.backend.api.dtos.league.*;
 import com.virtual_paddock.backend.domain.entities.League;
 import com.virtual_paddock.backend.domain.entities.User;
-import org.springframework.security.core.context.SecurityContextHolder;
 import com.virtual_paddock.backend.domain.repositories.LeagueRepository;
 import com.virtual_paddock.backend.infrastructure.abstract_service.ILeagueService;
+import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.LeagueMapper;
-import jakarta.persistence.EntityNotFoundException;
+import com.virtual_paddock.backend.utils.exeption.BadRequestException;
+import com.virtual_paddock.backend.utils.exeption.ErrorMessages;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -21,12 +27,24 @@ import org.springframework.transaction.annotation.Transactional;
 public class LeagueServiceImpl implements ILeagueService {
 
     private final LeagueRepository leagueRepository;
+    private final com.virtual_paddock.backend.domain.repositories.UserRepository userRepository;
     private final LeagueMapper leagueMapper;
+
+    private League find(UUID id) {
+        return this.leagueRepository.findById(id).orElseThrow(() ->
+                new BadRequestException(ErrorMessages.IdNotFound("League")));
+    }
 
     @Override
     public LeagueResponse create(LeagueRequest request) {
         // Obtener el usuario autenticado del contexto de seguridad
-        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof User principal)) {
+            throw new BadRequestException("Usuario no autenticado");
+        }
+
+        User currentUser = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("User")));
         
         League league = leagueMapper.toEntity(request);
         league.setUser(currentUser); // Asociar la liga al usuario creador
@@ -37,52 +55,71 @@ public class LeagueServiceImpl implements ILeagueService {
 
     @Override
     @Transactional(readOnly = true)
-    public LeagueResponse getById(Long id) {
-        League league = leagueRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Liga no encontrada con ID: " + id));
+    @Cacheable(value = "leagues", key = "#id.toString()")
+    public LeagueResponse getById(UUID id) {
+        League league = find(id);
         return leagueMapper.toResponse(league);
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "leaguesBySlug", key = "#slugUrl")
     public LeagueResponse getBySlugUrl(String slugUrl) {
         League league = leagueRepository.findBySlugUrl(slugUrl)
-                .orElseThrow(() -> new EntityNotFoundException("Liga no encontrada con slug: " + slugUrl));
+                .orElseThrow(() -> new BadRequestException(ErrorMessages.NotFound(slugUrl)));
         return leagueMapper.toResponse(league);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<LeagueBasicResponse> getAll(int page, int size) {
-        Page<League> leaguePage = leagueRepository.findAll(PageRequest.of(page, size));
-        return buildPageResponse(leaguePage);
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        Page<League> leaguePage;
+
+        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof User currentUser) {
+            if (currentUser.getRole() == com.virtual_paddock.backend.utils.enums.Role.SUPERADMIN) {
+                // El Superadmin tiene visibilidad global de todas las ligas
+                leaguePage = leagueRepository.findAll(PageRequest.of(page, size));
+            } else {
+                // El organizador (LEAGUE_ADMIN) solo ve sus propias ligas
+                leaguePage = leagueRepository.findByUserId(currentUser.getId(), PageRequest.of(page, size));
+            }
+        } else {
+            // Público / no autenticado (para portales públicos)
+            leaguePage = leagueRepository.findAll(PageRequest.of(page, size));
+        }
+
+        return PageResponseHelper.fromPage(leaguePage, leagueMapper::toBasicResponse);
     }
 
     @Override
-    public LeagueResponse update(Long id, LeagueUpdate update) {
-        League league = leagueRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Liga no encontrada con ID: " + id));
+    @CacheEvict(value = {"leagues", "leaguesBySlug"}, allEntries = true)
+    public LeagueResponse update(UUID id, LeagueUpdate update) {
+        League league = find(id);
+        verifyOwnershipOrSuperadmin(league);
         leagueMapper.updateEntityFromDto(update, league);
         League updated = leagueRepository.save(league);
         return leagueMapper.toResponse(updated);
     }
 
     @Override
-    public void delete(Long id) {
-        if (!leagueRepository.existsById(id)) {
-            throw new EntityNotFoundException("Liga no encontrada con ID: " + id);
-        }
-        leagueRepository.deleteById(id);
+    @CacheEvict(value = {"leagues", "leaguesBySlug"}, allEntries = true)
+    public void delete(UUID id) {
+        League league = find(id);
+        verifyOwnershipOrSuperadmin(league);
+        leagueRepository.delete(league);
     }
 
-    private PageResponse<LeagueBasicResponse> buildPageResponse(Page<League> page) {
-        return PageResponse.<LeagueBasicResponse>builder()
-                .content(page.getContent().stream().map(leagueMapper::toBasicResponse).toList())
-                .pageNumber(page.getNumber())
-                .pageSize(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .last(page.isLast())
-                .build();
+    private void verifyOwnershipOrSuperadmin(League league) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof User currentUser) {
+            if (currentUser.getRole() == com.virtual_paddock.backend.utils.enums.Role.SUPERADMIN) {
+                return; // Superadmin puede gestionar cualquier liga
+            }
+            if (league.getUser() != null && league.getUser().getId().equals(currentUser.getId())) {
+                return; // El organizador dueño puede gestionar su liga
+            }
+        }
+        throw new BadRequestException("Acceso denegado: No tienes permisos para gestionar esta liga.");
     }
 }

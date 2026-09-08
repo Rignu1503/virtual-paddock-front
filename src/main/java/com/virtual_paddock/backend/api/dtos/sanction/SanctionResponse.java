@@ -5,16 +5,18 @@ import com.virtual_paddock.backend.utils.enums.SanctionStatus;
 import com.virtual_paddock.backend.utils.enums.SanctionType;
 import lombok.*;
 
+import java.util.UUID;
+
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class SanctionResponse {
-    private Long id;
+    private UUID id;
     private SanctionType type;
     private SanctionSeverity severity;
     private SanctionStatus status;
     private String detail;
     private Integer penaltySeconds;
     private Integer pointsDeduction;
-    private Long raceEventId;
-    private Long driverId;
+    private UUID raceEventId;
+    private UUID driverId;
     private String driverName;
 }

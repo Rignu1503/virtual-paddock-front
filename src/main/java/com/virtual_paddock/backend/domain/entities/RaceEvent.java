@@ -5,12 +5,18 @@ import com.virtual_paddock.backend.utils.enums.RaceType;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Entity
-@Table(name = "race_events")
+@Table(name = "race_events", indexes = {
+    @Index(name = "idx_race_events_season", columnList = "season_id"),
+    @Index(name = "idx_race_events_season_status", columnList = "season_id, status")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,8 +25,8 @@ import java.util.List;
 public class RaceEvent {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(nullable = false)
     private String roundNumber;
@@ -28,7 +34,10 @@ public class RaceEvent {
     @Column(nullable = false)
     private String circuitName;
 
-    private LocalDate date;
+    private Instant date;
+
+    @Column(name = "qualy_date")
+    private Instant qualyDate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -39,15 +48,23 @@ public class RaceEvent {
     @Builder.Default
     private RaceType raceType = RaceType.NORMAL; // NORMAL o SPRINT
 
+    @Column(name = "race_duration")
+    @Builder.Default
+    private String raceDuration = "45 Min";
+
+    @Column(name = "qualy_duration")
+    @Builder.Default
+    private String qualyDuration = "15 Min";
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "season_id", nullable = false)
     private Season season;
 
-    @OneToMany(mappedBy = "raceEvent", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "raceEvent", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<RaceResult> raceResults = new ArrayList<>();
 
-    @OneToMany(mappedBy = "raceEvent", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "raceEvent", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
-    private List<Sanction> sanctions = new ArrayList<>();
+    private Set<Sanction> sanctions = new LinkedHashSet<>();
 }

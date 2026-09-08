@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import java.util.UUID;
+
 @Service
 public class RaceCalculationService {
 
@@ -23,7 +25,7 @@ public class RaceCalculationService {
     public List<RaceResult> calculateRaceResults(
             RaceEvent raceEvent,
             List<RaceResultBulkItemRequest> bulkItems,
-            Map<Long, Driver> driversMap
+            Map<UUID, Driver> driversMap
     ) {
         Championship championship = raceEvent.getSeason().getChampionship();
         

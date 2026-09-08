@@ -8,9 +8,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/points-systems")
@@ -20,26 +22,27 @@ public class PointsSystemController {
     private final IPointsSystemService pointsSystemService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
     public ResponseEntity<ApiResponse<PointsSystemResponse>> create(@Valid @RequestBody PointsSystemRequest request) {
         PointsSystemResponse response = pointsSystemService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Sistema de puntos creado exitosamente", response));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<PointsSystemResponse>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PointsSystemResponse>> getById(@PathVariable UUID id) {
         PointsSystemResponse response = pointsSystemService.getById(id);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @GetMapping("/league/{leagueId}")
-    public ResponseEntity<ApiResponse<List<PointsSystemResponse>>> getByLeagueId(@PathVariable Long leagueId) {
+    public ResponseEntity<ApiResponse<List<PointsSystemResponse>>> getByLeagueId(@PathVariable UUID leagueId) {
         List<PointsSystemResponse> response = pointsSystemService.getByLeagueId(leagueId);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @GetMapping("/league/{leagueId}/paged")
     public ResponseEntity<ApiResponse<PageResponse<PointsSystemBasicResponse>>> getByLeagueIdPaged(
-            @PathVariable Long leagueId,
+            @PathVariable UUID leagueId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         PageResponse<PointsSystemBasicResponse> response = pointsSystemService.getByLeagueIdPaged(leagueId, page, size);
@@ -47,15 +50,17 @@ public class PointsSystemController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
     public ResponseEntity<ApiResponse<PointsSystemResponse>> update(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody PointsSystemUpdate update) {
         PointsSystemResponse response = pointsSystemService.update(id, update);
         return ResponseEntity.ok(ApiResponse.ok("Sistema de puntos actualizado exitosamente", response));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         pointsSystemService.delete(id);
         return ResponseEntity.ok(ApiResponse.ok("Sistema de puntos eliminado exitosamente", null));
     }

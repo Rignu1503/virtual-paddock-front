@@ -7,9 +7,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.UUID;
+
 @Repository
-public interface DriverRepository extends JpaRepository<Driver, Long> {
-    Page<Driver> findByTeamId(Long teamId, Pageable pageable);
-    Page<Driver> findByTeamLeagueId(Long leagueId, Pageable pageable);
+public interface DriverRepository extends JpaRepository<Driver, UUID> {
+    Page<Driver> findByTeamId(UUID teamId, Pageable pageable);
+    Page<Driver> findByTeamLeagueId(UUID leagueId, Pageable pageable);
     Page<Driver> findByStatus(DriverStatus status, Pageable pageable);
 }

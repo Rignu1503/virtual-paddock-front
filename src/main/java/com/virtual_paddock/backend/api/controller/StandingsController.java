@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/seasons/{seasonId}/standings")
@@ -19,7 +20,7 @@ public class StandingsController {
 
     @GetMapping("/drivers")
     public ResponseEntity<ApiResponse<List<DriverStandingResponse>>> getDriverStandings(
-            @PathVariable Long seasonId,
+            @PathVariable UUID seasonId,
             @RequestParam(required = false) String category) {
         
         List<DriverStandingResponse> standings = standingsService.getDriverStandings(seasonId, category);
@@ -28,7 +29,7 @@ public class StandingsController {
 
     @GetMapping("/teams")
     public ResponseEntity<ApiResponse<List<TeamStandingResponse>>> getTeamStandings(
-            @PathVariable Long seasonId,
+            @PathVariable UUID seasonId,
             @RequestParam(required = false) String category) {
         
         List<TeamStandingResponse> standings = standingsService.getTeamStandings(seasonId, category);
