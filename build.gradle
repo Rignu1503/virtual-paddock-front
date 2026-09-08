@@ -35,8 +35,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 
-	// MySQL Driver
+	// MySQL Driver & Cloud SQL Socket Factory
 	runtimeOnly 'com.mysql:mysql-connector-j'
+	implementation 'com.google.cloud.sql:mysql-socket-factory-connector-j-8:1.15.1'
 
 	// Lombok
 	compileOnly 'org.projectlombok:lombok'
