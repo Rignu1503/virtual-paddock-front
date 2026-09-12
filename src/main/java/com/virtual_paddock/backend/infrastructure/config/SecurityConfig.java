@@ -26,7 +26,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    @Value("${application.security.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*,https://*.pages.dev,https://*.web.app,https://*.firebaseapp.com}")
+    @Value("${application.security.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*,https://*.pages.dev,https://*.web.app,https://*.firebaseapp.com,https://*.vercel.app,https://virtual-paddock.vercel.app}")
     private List<String> allowedOrigins;
 
     private final JwtAuthenticationFilter jwtAuthFilter;
