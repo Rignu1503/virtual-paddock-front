@@ -12,4 +12,5 @@ public interface ILeagueService {
     PageResponse<LeagueBasicResponse> getAll(int page, int size);
     LeagueResponse update(UUID id, LeagueUpdate update);
     void delete(UUID id);
+    String regenerateInviteCode(UUID id);
 }

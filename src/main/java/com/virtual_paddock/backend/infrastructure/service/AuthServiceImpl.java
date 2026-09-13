@@ -9,6 +9,9 @@ import com.virtual_paddock.backend.domain.repositories.UserRepository;
 import com.virtual_paddock.backend.infrastructure.abstract_service.IAuthService;
 import com.virtual_paddock.backend.infrastructure.security.JwtService;
 import com.virtual_paddock.backend.infrastructure.security.RefreshTokenService;
+import com.virtual_paddock.backend.domain.entities.League;
+import com.virtual_paddock.backend.domain.repositories.LeagueRepository;
+import com.virtual_paddock.backend.utils.exeption.BadRequestException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -16,11 +19,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements IAuthService {
 
     private final UserRepository userRepository;
+    private final LeagueRepository leagueRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
@@ -33,6 +39,13 @@ public class AuthServiceImpl implements IAuthService {
             throw new IllegalArgumentException("El email ya está registrado");
         }
 
+        League invitedLeague = null;
+        if (request.getInviteCode() != null && !request.getInviteCode().trim().isEmpty()) {
+            String code = request.getInviteCode().trim().toUpperCase();
+            invitedLeague = leagueRepository.findByInviteCode(code)
+                    .orElseThrow(() -> new BadRequestException("El código de invitación '" + code + "' no es válido o no existe."));
+        }
+
         // Todo registro público de organizadores se asigna de forma blindada como LEAGUE_ADMIN
         User user = User.builder()
                 .email(request.getEmail())
@@ -41,6 +54,15 @@ public class AuthServiceImpl implements IAuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
+
+        if (invitedLeague != null) {
+            if (invitedLeague.getAdministrators() == null) {
+                invitedLeague.setAdministrators(new ArrayList<>());
+            }
+            invitedLeague.getAdministrators().add(savedUser);
+            leagueRepository.save(invitedLeague);
+        }
+
         String jwtToken = jwtService.generateToken(savedUser);
 
         return AuthResponse.builder()

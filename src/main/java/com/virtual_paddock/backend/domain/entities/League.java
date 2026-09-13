@@ -46,9 +46,21 @@ public class League {
 
     private String rulesUrl;
 
+    @Column(unique = true)
+    private String inviteCode;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "league_administrators",
+        joinColumns = @JoinColumn(name = "league_id"),
+        inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    @Builder.Default
+    private List<User> administrators = new ArrayList<>();
 
     @OneToMany(mappedBy = "league", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default

@@ -17,4 +17,5 @@ public class LeagueBasicResponse {
     private String tagline;
     private String accentColor;
     private String surfaceTheme;
+    private String inviteCode;
 }

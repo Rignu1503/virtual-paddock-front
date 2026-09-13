@@ -25,4 +25,5 @@ public class LeagueResponse {
     private String registrationUrl;
     private String rulesUrl;
     private UUID userId;
+    private String inviteCode;
 }

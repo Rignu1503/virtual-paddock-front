@@ -48,16 +48,21 @@ public class LeagueServiceImpl implements ILeagueService {
         
         League league = leagueMapper.toEntity(request);
         league.setUser(currentUser); // Asociar la liga al usuario creador
+        league.setInviteCode(generateUniqueInviteCode());
         
         League saved = leagueRepository.save(league);
         return leagueMapper.toResponse(saved);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     @Cacheable(value = "leagues", key = "#id.toString()")
     public LeagueResponse getById(UUID id) {
         League league = find(id);
+        if (league.getInviteCode() == null || league.getInviteCode().trim().isEmpty()) {
+            league.setInviteCode(generateUniqueInviteCode());
+            league = leagueRepository.save(league);
+        }
         return leagueMapper.toResponse(league);
     }
 
@@ -81,8 +86,8 @@ public class LeagueServiceImpl implements ILeagueService {
                 // El Superadmin tiene visibilidad global de todas las ligas
                 leaguePage = leagueRepository.findAll(PageRequest.of(page, size));
             } else {
-                // El organizador (LEAGUE_ADMIN) solo ve sus propias ligas
-                leaguePage = leagueRepository.findByUserId(currentUser.getId(), PageRequest.of(page, size));
+                // El organizador (LEAGUE_ADMIN) ve sus ligas creadas y aquellas donde es co-administrador
+                leaguePage = leagueRepository.findByAdministeredUser(currentUser.getId(), PageRequest.of(page, size));
             }
         } else {
             // Público / no autenticado (para portales públicos)
@@ -110,6 +115,32 @@ public class LeagueServiceImpl implements ILeagueService {
         leagueRepository.delete(league);
     }
 
+    @Override
+    @CacheEvict(value = {"leagues", "leaguesBySlug"}, allEntries = true)
+    public String regenerateInviteCode(UUID id) {
+        League league = find(id);
+        verifyOwnershipOrSuperadmin(league);
+        String newCode = generateUniqueInviteCode();
+        league.setInviteCode(newCode);
+        leagueRepository.save(league);
+        return newCode;
+    }
+
+    private String generateUniqueInviteCode() {
+        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        StringBuilder sb = new StringBuilder("VP-");
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        String code;
+        do {
+            sb.setLength(3);
+            for (int i = 0; i < 6; i++) {
+                sb.append(chars.charAt(random.nextInt(chars.length())));
+            }
+            code = sb.toString();
+        } while (leagueRepository.existsByInviteCode(code));
+        return code;
+    }
+
     private void verifyOwnershipOrSuperadmin(League league) {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof User currentUser) {
@@ -118,6 +149,10 @@ public class LeagueServiceImpl implements ILeagueService {
             }
             if (league.getUser() != null && league.getUser().getId().equals(currentUser.getId())) {
                 return; // El organizador dueño puede gestionar su liga
+            }
+            if (league.getAdministrators() != null &&
+                league.getAdministrators().stream().anyMatch(admin -> admin.getId().equals(currentUser.getId()))) {
+                return; // Co-administrador puede gestionar la liga
             }
         }
         throw new BadRequestException("Acceso denegado: No tienes permisos para gestionar esta liga.");

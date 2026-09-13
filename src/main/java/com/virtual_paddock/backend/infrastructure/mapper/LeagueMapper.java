@@ -14,6 +14,8 @@ public interface LeagueMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
+    @Mapping(target = "administrators", ignore = true)
+    @Mapping(target = "inviteCode", ignore = true)
     @Mapping(target = "championships", ignore = true)
     @Mapping(target = "teams", ignore = true)
     League toEntity(LeagueRequest request);
@@ -21,6 +23,8 @@ public interface LeagueMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
+    @Mapping(target = "administrators", ignore = true)
+    @Mapping(target = "inviteCode", ignore = true)
     @Mapping(target = "championships", ignore = true)
     @Mapping(target = "teams", ignore = true)
     void updateEntityFromDto(LeagueUpdate update, @MappingTarget League league);

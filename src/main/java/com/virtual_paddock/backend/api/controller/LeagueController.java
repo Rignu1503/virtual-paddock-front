@@ -62,4 +62,11 @@ public class LeagueController {
         leagueService.delete(id);
         return ResponseEntity.ok(ApiResponse.ok("Liga eliminada exitosamente", null));
     }
+
+    @PostMapping("/{id}/regenerate-invite-code")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
+    public ResponseEntity<ApiResponse<String>> regenerateInviteCode(@PathVariable UUID id) {
+        String newCode = leagueService.regenerateInviteCode(id);
+        return ResponseEntity.ok(ApiResponse.ok("Código de invitación generado exitosamente", newCode));
+    }
 }
