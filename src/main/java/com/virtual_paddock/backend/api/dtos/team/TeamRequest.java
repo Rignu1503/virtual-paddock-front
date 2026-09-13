@@ -18,6 +18,9 @@ public class TeamRequest {
     @Size(max = 7, message = "El color debe ser un código hexadecimal válido")
     private String colorHex;
 
-    @NotNull(message = "El ID de la liga es obligatorio")
     private UUID leagueId;
+
+    private UUID championshipId;
+
+    private UUID seasonId;
 }

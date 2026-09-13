@@ -10,6 +10,9 @@ public interface ITeamService {
     TeamResponse getById(UUID id);
     PageResponse<TeamBasicResponse> getAll(int page, int size);
     PageResponse<TeamBasicResponse> getByLeagueId(UUID leagueId, int page, int size);
+    PageResponse<TeamBasicResponse> getByChampionshipId(UUID championshipId, int page, int size);
+    PageResponse<TeamBasicResponse> getBySeasonId(UUID seasonId, int page, int size);
+    PageResponse<TeamBasicResponse> getFiltered(UUID leagueId, UUID championshipId, UUID seasonId, int page, int size);
     TeamResponse update(UUID id, TeamUpdate update);
     void delete(UUID id);
 }

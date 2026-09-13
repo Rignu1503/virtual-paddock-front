@@ -10,4 +10,8 @@ public class TeamResponse {
     private String carModel;
     private String colorHex;
     private UUID leagueId;
+    private UUID championshipId;
+    private String championshipName;
+    private UUID seasonId;
+    private String seasonName;
 }

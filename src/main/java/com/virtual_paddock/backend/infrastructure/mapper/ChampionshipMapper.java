@@ -22,6 +22,7 @@ public interface ChampionshipMapper {
     @Mapping(target = "pointsSystemRef", ignore = true)
     @Mapping(target = "sprintPointsSystemRef", ignore = true)
     @Mapping(target = "seasons", ignore = true)
+    @Mapping(target = "teams", ignore = true)
     Championship toEntity(ChampionshipRequest request);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -30,5 +31,6 @@ public interface ChampionshipMapper {
     @Mapping(target = "pointsSystemRef", ignore = true)
     @Mapping(target = "sprintPointsSystemRef", ignore = true)
     @Mapping(target = "seasons", ignore = true)
+    @Mapping(target = "teams", ignore = true)
     void updateEntityFromDto(ChampionshipUpdate update, @MappingTarget Championship championship);
 }

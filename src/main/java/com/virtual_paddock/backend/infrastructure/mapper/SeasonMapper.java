@@ -15,11 +15,13 @@ public interface SeasonMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "championship", ignore = true)
     @Mapping(target = "raceEvents", ignore = true)
+    @Mapping(target = "teams", ignore = true)
     Season toEntity(SeasonRequest request);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "championship", ignore = true)
     @Mapping(target = "raceEvents", ignore = true)
+    @Mapping(target = "teams", ignore = true)
     void updateEntityFromDto(SeasonUpdate update, @MappingTarget Season season);
 }

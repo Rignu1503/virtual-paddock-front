@@ -35,9 +35,17 @@ public class TeamController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<TeamBasicResponse>>> getAll(
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) UUID championshipId,
+            @RequestParam(required = false) UUID seasonId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PageResponse<TeamBasicResponse> response = teamService.getAll(page, size);
+        PageResponse<TeamBasicResponse> response;
+        if (leagueId != null || championshipId != null || seasonId != null) {
+            response = teamService.getFiltered(leagueId, championshipId, seasonId, page, size);
+        } else {
+            response = teamService.getAll(page, size);
+        }
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
@@ -47,6 +55,24 @@ public class TeamController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         PageResponse<TeamBasicResponse> response = teamService.getByLeagueId(leagueId, page, size);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/championship/{championshipId}")
+    public ResponseEntity<ApiResponse<PageResponse<TeamBasicResponse>>> getByChampionshipId(
+            @PathVariable UUID championshipId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PageResponse<TeamBasicResponse> response = teamService.getByChampionshipId(championshipId, page, size);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/season/{seasonId}")
+    public ResponseEntity<ApiResponse<PageResponse<TeamBasicResponse>>> getBySeasonId(
+            @PathVariable UUID seasonId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PageResponse<TeamBasicResponse> response = teamService.getBySeasonId(seasonId, page, size);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

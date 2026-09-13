@@ -54,4 +54,8 @@ public class Championship {
     @OneToMany(mappedBy = "championship", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<Season> seasons = new ArrayList<>();
+
+    @OneToMany(mappedBy = "championship", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Team> teams = new ArrayList<>();
 }

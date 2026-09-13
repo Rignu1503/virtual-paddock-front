@@ -30,4 +30,8 @@ public class Season {
     @OneToMany(mappedBy = "season", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<RaceEvent> raceEvents = new ArrayList<>();
+
+    @OneToMany(mappedBy = "season", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Team> teams = new ArrayList<>();
 }

@@ -13,4 +13,10 @@ public class TeamUpdate {
 
     @Size(max = 7, message = "El color debe ser un código hexadecimal válido")
     private String colorHex;
+
+    private java.util.UUID leagueId;
+
+    private java.util.UUID championshipId;
+
+    private java.util.UUID seasonId;
 }

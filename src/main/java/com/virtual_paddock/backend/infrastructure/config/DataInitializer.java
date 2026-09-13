@@ -45,6 +45,8 @@ public class DataInitializer implements CommandLineRunner {
         addIndexIfNotExists("leagues", "idx_leagues_slug", "slug_url");
         addIndexIfNotExists("drivers", "idx_drivers_league", "league_id");
         addIndexIfNotExists("teams", "idx_teams_league", "league_id");
+        addIndexIfNotExists("teams", "idx_teams_championship", "championship_id");
+        addIndexIfNotExists("teams", "idx_teams_season", "season_id");
 
         if (!userRepository.existsByEmail(superadminEmail)) {
             log.info("Inicializando cuenta de SUPERADMIN por defecto: {}", superadminEmail);
