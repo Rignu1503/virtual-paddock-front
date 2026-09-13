@@ -140,6 +140,7 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
+    @Transactional
     public RefreshToken createRefreshToken(java.util.UUID userId) {
         return refreshTokenService.createRefreshToken(userId);
     }
