@@ -32,8 +32,10 @@ public class League {
 
     private String surfaceTheme;
 
+    @Column(length = 2048)
     private String logoUrl;
 
+    @Column(length = 2048)
     private String backgroundUrl;
 
     private String discordUrl;

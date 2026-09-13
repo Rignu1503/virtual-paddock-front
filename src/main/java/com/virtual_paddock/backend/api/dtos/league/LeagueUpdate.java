@@ -24,7 +24,10 @@ public class LeagueUpdate {
 
     private String surfaceTheme;
 
+    @Size(max = 2048, message = "La URL del logo no puede exceder 2048 caracteres")
     private String logoUrl;
+
+    @Size(max = 2048, message = "La URL del fondo no puede exceder 2048 caracteres")
     private String backgroundUrl;
 
     private String discordUrl;
