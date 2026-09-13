@@ -32,6 +32,10 @@ public class League {
 
     private String surfaceTheme;
 
+    private String logoUrl;
+
+    private String backgroundUrl;
+
     private String discordUrl;
 
     private String twitchUrl;

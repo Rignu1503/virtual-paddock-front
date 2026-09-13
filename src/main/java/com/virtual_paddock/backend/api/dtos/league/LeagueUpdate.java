@@ -24,6 +24,9 @@ public class LeagueUpdate {
 
     private String surfaceTheme;
 
+    private String logoUrl;
+    private String backgroundUrl;
+
     private String discordUrl;
     private String twitchUrl;
     private String kickUrl;
