@@ -60,7 +60,7 @@ public class RaceEventServiceImpl implements IRaceEventService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<RaceEventBasicResponse> getBySeasonId(UUID seasonId, int page, int size) {
-        Page<RaceEvent> raceEventPage = raceEventRepository.findBySeasonId(seasonId, PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "date")));
+        Page<RaceEvent> raceEventPage = raceEventRepository.findBySeasonId(seasonId, PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "roundNumber")));
         return PageResponseHelper.fromPage(raceEventPage, raceEventMapper::toBasicResponse);
     }
 

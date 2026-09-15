@@ -30,6 +30,8 @@ public class AssettoCorsaJsonParser implements ISimulatorLogParser {
             return parseAssettoCorsa1Json(root, allDrivers);
         } else if (root.has("sessionResult") && root.get("sessionResult").has("leaderBoardLines")) {
             return parseAccJson(root, allDrivers);
+        } else if (root.has("players") && root.has("sessions")) {
+            return parseKunosSessionJson(root, allDrivers);
         } else if (root.has("results") || root.has("Results") || root.isArray()) {
             return parseGenericJson(root, allDrivers);
         }
@@ -198,6 +200,96 @@ public class AssettoCorsaJsonParser implements ISimulatorLogParser {
                     .status(status)
                     .build());
         }
+        return items;
+    }
+
+    private List<RaceResultBulkItemRequest> parseKunosSessionJson(JsonNode root, List<Driver> allDrivers) {
+        List<RaceResultBulkItemRequest> items = new ArrayList<>();
+        JsonNode players = root.get("players");
+        JsonNode sessions = root.get("sessions");
+
+        // Find the race session (type 3) or fallback to the last session
+        JsonNode raceSession = null;
+        for (JsonNode session : sessions) {
+            if (session.has("type") && session.get("type").asInt() == 3) {
+                raceSession = session;
+                break;
+            }
+        }
+        if (raceSession == null && sessions.size() > 0) {
+            raceSession = sessions.get(sessions.size() - 1);
+        }
+        
+        if (raceSession == null || !raceSession.has("raceResult")) {
+            return items;
+        }
+
+        JsonNode raceResult = raceSession.get("raceResult");
+        JsonNode lapstotal = raceSession.get("lapstotal");
+        JsonNode lapsNode = raceSession.get("laps");
+        JsonNode bestLapsNode = raceSession.get("bestLaps");
+
+        // Calculate total time per car from laps
+        Map<Integer, Long> carTotalTimes = new HashMap<>();
+        if (lapsNode != null && lapsNode.isArray()) {
+            for (JsonNode lap : lapsNode) {
+                int carId = lap.has("car") ? lap.get("car").asInt() : -1;
+                long time = lap.has("time") ? lap.get("time").asLong() : -1;
+                if (carId >= 0 && time > 0) {
+                    carTotalTimes.put(carId, carTotalTimes.getOrDefault(carId, 0L) + time);
+                }
+            }
+        }
+
+        // Map best laps
+        Map<Integer, Long> carBestLaps = new HashMap<>();
+        if (bestLapsNode != null && bestLapsNode.isArray()) {
+            for (JsonNode bl : bestLapsNode) {
+                int carId = bl.has("car") ? bl.get("car").asInt() : -1;
+                long time = bl.has("time") ? bl.get("time").asLong() : -1;
+                if (carId >= 0 && time > 0) {
+                    carBestLaps.put(carId, time);
+                }
+            }
+        }
+
+        for (int i = 0; i < raceResult.size(); i++) {
+            int playerIndex = raceResult.get(i).asInt();
+            if (playerIndex < 0 || playerIndex >= players.size()) continue;
+            
+            JsonNode playerNode = players.get(playerIndex);
+            String driverName = playerNode.has("name") ? playerNode.get("name").asText().trim() : "";
+            
+            // Handle edge case where name is empty
+            if (driverName.isEmpty()) continue;
+            
+            String carNumber = String.valueOf(playerIndex); // Fallback to index as car ID
+            
+            int lapsCompleted = (lapstotal != null && lapstotal.has(playerIndex)) ? lapstotal.get(playerIndex).asInt() : 0;
+            Long totalTimeMs = carTotalTimes.get(playerIndex);
+            Long bestLapMs = carBestLaps.get(playerIndex);
+
+            String status = (lapsCompleted > 0) ? "FINISHED" : "DNF";
+            
+            Driver matchedDriver = DriverMatchingHelper.matchDriver(driverName, null, carNumber, allDrivers);
+            UUID resolvedDriverId = matchedDriver != null ? matchedDriver.getId() : null;
+            String resolvedName = matchedDriver != null ? matchedDriver.getName() : driverName;
+            
+            items.add(RaceResultBulkItemRequest.builder()
+                    .driverId(resolvedDriverId)
+                    .driverName(resolvedName)
+                    .carNumber(carNumber)
+                    .finishOrder(i + 1)
+                    .totalTime(totalTimeMs != null && totalTimeMs > 0 ? LapTimeHelper.formatMillis(totalTimeMs) : null)
+                    .bestLapTime(bestLapMs != null && bestLapMs > 0 ? LapTimeHelper.formatMillis(bestLapMs) : null)
+                    .lapsCompleted(lapsCompleted > 0 ? lapsCompleted : null)
+                    .penaltiesSeconds(0)
+                    .fastestLap(false)
+                    .polePosition(i == 0)
+                    .status(status)
+                    .build());
+        }
+
         return items;
     }
 }
