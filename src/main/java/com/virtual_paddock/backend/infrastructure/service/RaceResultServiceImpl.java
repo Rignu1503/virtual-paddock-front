@@ -60,9 +60,15 @@ public class RaceResultServiceImpl implements IRaceResultService {
         List<UUID> driverIds = request.getResults().stream()
                 .map(RaceResultBulkItemRequest::getDriverId)
                 .toList();
+                
+        long distinctDriverCount = driverIds.stream().distinct().count();
+        if (distinctDriverCount < driverIds.size()) {
+            throw new BadRequestException("No se puede asignar al mismo piloto más de una vez en la misma carrera. Revise si hay pilotos duplicados en la lista.");
+        }
 
-        List<Driver> drivers = driverRepository.findAllById(driverIds);
-        if (drivers.size() != driverIds.size()) {
+        List<UUID> distinctDriverIds = driverIds.stream().distinct().toList();
+        List<Driver> drivers = driverRepository.findAllById(distinctDriverIds);
+        if (drivers.size() != distinctDriverIds.size()) {
             throw new BadRequestException("Uno o más pilotos no fueron encontrados en la base de datos");
         }
 
