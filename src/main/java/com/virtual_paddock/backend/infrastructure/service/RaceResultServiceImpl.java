@@ -191,7 +191,8 @@ public class RaceResultServiceImpl implements IRaceResultService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<RaceResultBasicResponse> getByRaceEventId(UUID raceEventId, int page, int size) {
-        Page<RaceResult> resultPage = raceResultRepository.findByRaceEventId(raceEventId, PageRequest.of(page, size));
+        Page<RaceResult> resultPage = raceResultRepository.findByRaceEventId(raceEventId, 
+                PageRequest.of(page, size, org.springframework.data.domain.Sort.by("position").ascending()));
         return PageResponseHelper.fromPage(resultPage, raceResultMapper::toBasicResponse);
     }
 
