@@ -77,29 +77,45 @@ public class RaceCalculationService {
             ));
         }
 
-        // Comparador robusto para clasificaciones:
         // 1. Pilotos con tiempos reales (completaron carrera) van primero.
         // 2. Entre pilotos con tiempos reales, el que completó más vueltas va primero.
         // 3. Con igual cantidad de vueltas, se ordena por tiempo final corregido (menor a mayor).
         // 4. Pilotos con tiempos simulados (DNF/DQ/Manual) van después, ordenados por finishOrder.
         Comparator<ProcessedItem> itemComparator = (a, b) -> {
-            if (a.simulatedTime() && !b.simulatedTime()) {
-                return 1; // b va primero
-            }
-            if (!a.simulatedTime() && b.simulatedTime()) {
-                return -1; // a va primero
-            }
+            // 1. Priorizar estado (FINISHED > DNF/DQ)
+            String statusA = a.request().getStatus() != null ? a.request().getStatus() : "FINISHED";
+            String statusB = b.request().getStatus() != null ? b.request().getStatus() : "FINISHED";
+            if (statusA.equals("FINISHED") && !statusB.equals("FINISHED")) return -1;
+            if (!statusA.equals("FINISHED") && statusB.equals("FINISHED")) return 1;
+
+            // 2. Si ambos son simulados o no tienen tiempo, usar finishOrder
             if (a.simulatedTime() && b.simulatedTime()) {
                 int orderA = a.request().getFinishOrder() != null ? a.request().getFinishOrder() : 999;
                 int orderB = b.request().getFinishOrder() != null ? b.request().getFinishOrder() : 999;
                 return Integer.compare(orderA, orderB);
             }
-            // Si ambos tienen vueltas completadas, el que tenga más vueltas va primero
+            if (a.simulatedTime() && !b.simulatedTime()) return 1;
+            if (!a.simulatedTime() && b.simulatedTime()) return -1;
+
+            // 3. Mayor número de vueltas primero
             Integer lapsA = a.request().getLapsCompleted();
             Integer lapsB = b.request().getLapsCompleted();
             if (lapsA != null && lapsB != null && !lapsA.equals(lapsB)) {
-                return Integer.compare(lapsB, lapsA); // Mayor número de vueltas primero
+                return Integer.compare(lapsB, lapsA);
             }
+
+            // 4. Si no hay vueltas, usar el finishOrder como guía principal si la diferencia de tiempo es masiva
+            // Esto evita que un piloto con 1 vuelta (ej 2 min) quede primero frente a uno con 30 vueltas (ej 45 min)
+            // si por alguna razón no se registraron las vueltas. Asumimos que si la diferencia es > 10 minutos,
+            // no están en la misma vuelta y manda el finishOrder.
+            long timeDiff = Math.abs(a.finalTimeMs() - b.finalTimeMs());
+            if (lapsA == null && lapsB == null && timeDiff > 600000) { // 10 minutos
+                int orderA = a.request().getFinishOrder() != null ? a.request().getFinishOrder() : 999;
+                int orderB = b.request().getFinishOrder() != null ? b.request().getFinishOrder() : 999;
+                return Integer.compare(orderA, orderB);
+            }
+
+            // 5. Finalmente, ordenar por tiempo final corregido con penalizaciones
             return Long.compare(a.finalTimeMs(), b.finalTimeMs());
         };
 

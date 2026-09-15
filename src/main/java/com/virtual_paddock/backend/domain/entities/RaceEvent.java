@@ -61,6 +61,7 @@ public class RaceEvent {
     private Season season;
 
     @OneToMany(mappedBy = "raceEvent", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("position ASC")
     @Builder.Default
     private List<RaceResult> raceResults = new ArrayList<>();
 
