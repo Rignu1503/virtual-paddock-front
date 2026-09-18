@@ -35,9 +35,17 @@ public class DriverController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<DriverBasicResponse>>> getAll(
+            @RequestParam(required = false) UUID leagueId,
+            @RequestParam(required = false) UUID championshipId,
+            @RequestParam(required = false) UUID teamId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PageResponse<DriverBasicResponse> response = driverService.getAll(page, size);
+        PageResponse<DriverBasicResponse> response;
+        if (leagueId != null || championshipId != null || teamId != null) {
+            response = driverService.getFiltered(leagueId, championshipId, teamId, page, size);
+        } else {
+            response = driverService.getAll(page, size);
+        }
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

@@ -11,5 +11,9 @@ public class DriverBasicResponse {
     private String nationality;
     private String carNumber;
     private String carModel;
+    private UUID teamId;
     private String teamName;
+    private UUID championshipId;
+    private String championshipName;
+    private UUID leagueId;
 }

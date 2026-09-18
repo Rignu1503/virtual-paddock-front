@@ -10,6 +10,7 @@ public interface IDriverService {
     DriverResponse getById(UUID id);
     PageResponse<DriverBasicResponse> getAll(int page, int size);
     PageResponse<DriverBasicResponse> getByTeamId(UUID teamId, int page, int size);
+    PageResponse<DriverBasicResponse> getFiltered(UUID leagueId, UUID championshipId, UUID teamId, int page, int size);
     DriverResponse update(UUID id, DriverUpdate update);
     void delete(UUID id);
 }

@@ -14,4 +14,16 @@ public interface DriverRepository extends JpaRepository<Driver, UUID> {
     Page<Driver> findByTeamId(UUID teamId, Pageable pageable);
     Page<Driver> findByTeamLeagueId(UUID leagueId, Pageable pageable);
     Page<Driver> findByStatus(DriverStatus status, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT d FROM Driver d WHERE (:leagueId IS NULL OR d.team.league.id = :leagueId OR d.team.championship.league.id = :leagueId) " +
+        "AND (:championshipId IS NULL OR d.team.championship.id = :championshipId) " +
+        "AND (:teamId IS NULL OR d.team.id = :teamId)"
+    )
+    Page<Driver> findByFilter(
+        @org.springframework.data.repository.query.Param("leagueId") UUID leagueId,
+        @org.springframework.data.repository.query.Param("championshipId") UUID championshipId,
+        @org.springframework.data.repository.query.Param("teamId") UUID teamId,
+        Pageable pageable
+    );
 }

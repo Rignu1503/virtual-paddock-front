@@ -16,4 +16,7 @@ public class DriverResponse {
     private DriverStatus status;
     private UUID teamId;
     private String teamName;
+    private UUID championshipId;
+    private String championshipName;
+    private UUID leagueId;
 }
