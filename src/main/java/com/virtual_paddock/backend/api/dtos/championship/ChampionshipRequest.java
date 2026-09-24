@@ -18,7 +18,7 @@ public class ChampionshipRequest {
     @Size(max = 100, message = "El nombre del juego no puede exceder 100 caracteres")
     private String gameName;
 
-    @Size(max = 50, message = "La categoría no puede exceder 50 caracteres")
+    @Size(max = 4096, message = "La categoría no puede exceder 4096 caracteres")
     private String category;
 
     private String pointsSystem; // Escala normal ej: "25,18,15,12,10,8,6,4,2,1"

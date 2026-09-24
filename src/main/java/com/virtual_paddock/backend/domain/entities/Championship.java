@@ -23,6 +23,7 @@ public class Championship {
     @Column(nullable = false)
     private String gameName;
 
+    @Column(name = "category", columnDefinition = "TEXT")
     private String category;
 
     @Column(name = "points_system")
