@@ -50,6 +50,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/actuator/**"
                         ).permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/driver-registrations").permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.GET,
                                 "/api/leagues/**",
