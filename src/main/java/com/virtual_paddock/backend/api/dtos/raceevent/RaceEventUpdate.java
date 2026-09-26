@@ -26,4 +26,7 @@ public class RaceEventUpdate {
     private RaceType raceType;
     private String raceDuration;
     private String qualyDuration;
+
+    @Size(max = 2000, message = "La URL del trazado no puede exceder 2000 caracteres")
+    private String trackLayoutUrl;
 }

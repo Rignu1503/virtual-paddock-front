@@ -21,6 +21,8 @@ public class DriverRegistrationResponse {
     private String carModel;
     private String email;
     private String discordTag;
+    private String contactType;
+    private String phoneWhatsapp;
     private String notes;
     private DriverRegistrationStatus status;
 

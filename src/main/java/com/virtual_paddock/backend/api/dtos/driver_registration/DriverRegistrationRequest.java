@@ -38,6 +38,12 @@ public class DriverRegistrationRequest {
     @Size(max = 100, message = "El tag de Discord no puede exceder 100 caracteres")
     private String discordTag;
 
+    @Size(max = 20, message = "El tipo de contacto no puede exceder 20 caracteres")
+    private String contactType;
+
+    @Size(max = 50, message = "El número de WhatsApp no puede exceder 50 caracteres")
+    private String phoneWhatsapp;
+
     @Size(max = 2000, message = "Las notas no pueden exceder 2000 caracteres")
     private String notes;
 

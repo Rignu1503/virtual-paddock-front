@@ -39,6 +39,8 @@ public class League {
     private String backgroundUrl;
 
     private String discordUrl;
+    @Column(length = 2048)
+    private String whatsappUrl;
 
     private String twitchUrl;
 

@@ -18,5 +18,6 @@ public class RaceEventResponse {
     private RaceType raceType;
     private String raceDuration;
     private String qualyDuration;
+    private String trackLayoutUrl;
     private UUID seasonId;
 }

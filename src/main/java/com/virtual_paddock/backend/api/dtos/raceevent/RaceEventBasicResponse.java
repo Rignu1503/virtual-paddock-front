@@ -17,4 +17,5 @@ public class RaceEventBasicResponse {
     private com.virtual_paddock.backend.utils.enums.EventStatus status;
     private String raceDuration;
     private String qualyDuration;
+    private String trackLayoutUrl;
 }

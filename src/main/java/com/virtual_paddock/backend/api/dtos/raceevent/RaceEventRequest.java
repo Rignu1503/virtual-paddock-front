@@ -40,6 +40,9 @@ public class RaceEventRequest {
     @Builder.Default
     private String qualyDuration = "15 Min";
 
+    @Size(max = 2000, message = "La URL del trazado no puede exceder 2000 caracteres")
+    private String trackLayoutUrl;
+
     @NotNull(message = "El ID de la temporada es obligatorio")
     private UUID seasonId;
 }

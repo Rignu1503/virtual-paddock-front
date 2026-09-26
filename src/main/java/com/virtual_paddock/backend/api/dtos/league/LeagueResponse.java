@@ -22,6 +22,7 @@ public class LeagueResponse {
     private String backgroundUrl;
 
     private String discordUrl;
+    private String whatsappUrl;
     private String twitchUrl;
     private String kickUrl;
     private String tiktokUrl;

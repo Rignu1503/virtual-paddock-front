@@ -46,6 +46,12 @@ public class DriverRegistration {
     @Column(name = "discord_tag", length = 100)
     private String discordTag;
 
+    @Column(name = "contact_type", length = 20)
+    private String contactType; // "DISCORD" | "WHATSAPP"
+
+    @Column(name = "phone_whatsapp", length = 50)
+    private String phoneWhatsapp;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 

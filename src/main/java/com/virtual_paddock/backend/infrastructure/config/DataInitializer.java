@@ -33,6 +33,10 @@ public class DataInitializer implements CommandLineRunner {
         addColumnIfNotExists("race_events", "race_duration", "VARCHAR(50) DEFAULT '45 Min'");
         addColumnIfNotExists("race_events", "qualy_duration", "VARCHAR(50) DEFAULT '15 Min'");
         addColumnIfNotExists("race_events", "qualy_date", "DATETIME(6)");
+        addColumnIfNotExists("race_events", "track_layout_url", "TEXT");
+        addColumnIfNotExists("driver_registrations", "contact_type", "VARCHAR(20)");
+        addColumnIfNotExists("driver_registrations", "phone_whatsapp", "VARCHAR(50)");
+        addColumnIfNotExists("leagues", "whatsapp_url", "VARCHAR(2048)");
 
         // Índices estratégicos para optimización de consultas recurrentes
         addIndexIfNotExists("race_events", "idx_race_events_season", "season_id");

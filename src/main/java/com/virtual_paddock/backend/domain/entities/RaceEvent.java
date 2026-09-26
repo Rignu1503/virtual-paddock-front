@@ -56,6 +56,9 @@ public class RaceEvent {
     @Builder.Default
     private String qualyDuration = "15 Min";
 
+    @Column(name = "track_layout_url", length = 2000)
+    private String trackLayoutUrl;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "season_id", nullable = false)
     private Season season;
