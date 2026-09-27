@@ -37,6 +37,31 @@ public class DriverServiceImpl implements IDriverService {
     public DriverResponse create(DriverRequest request) {
         Team team = teamRepository.findById(request.getTeamId())
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Team")));
+
+        UUID leagueId = null;
+        if (team.getLeague() != null) {
+            leagueId = team.getLeague().getId();
+        } else if (team.getChampionship() != null && team.getChampionship().getLeague() != null) {
+            leagueId = team.getChampionship().getLeague().getId();
+        }
+
+        if (leagueId != null) {
+            String cleanName = request.getName().trim();
+            if (driverRepository.existsByNameInLeague(leagueId, cleanName)) {
+                throw new BadRequestException("El nombre de piloto '" + cleanName + "' ya se encuentra registrado en esta liga.");
+            }
+
+            if (request.getGamertag() != null && !request.getGamertag().isBlank()) {
+                String cleanGamertag = request.getGamertag().trim();
+                if (cleanGamertag.startsWith("@")) {
+                    cleanGamertag = cleanGamertag.substring(1).trim();
+                }
+                if (!cleanGamertag.isBlank() && driverRepository.existsByGamertagInLeague(leagueId, cleanGamertag)) {
+                    throw new BadRequestException("El gamertag '" + cleanGamertag + "' ya se encuentra registrado en esta liga.");
+                }
+            }
+        }
+
         Driver driver = driverMapper.toEntity(request);
         driver.setTeam(team);
         Driver saved = driverRepository.save(driver);

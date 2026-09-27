@@ -14,4 +14,5 @@ public interface IDriverRegistrationService {
     DriverResponse approve(UUID id, DriverApprovalRequest approval);
     DriverRegistrationResponse reject(UUID id, DriverRejectionRequest rejection);
     long countPending(UUID leagueId);
+    DriverAvailabilityResponse checkAvailability(UUID leagueId, String name, String gamertag);
 }

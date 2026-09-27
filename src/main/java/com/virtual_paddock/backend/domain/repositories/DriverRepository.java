@@ -5,6 +5,8 @@ import com.virtual_paddock.backend.utils.enums.DriverStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
@@ -15,15 +17,35 @@ public interface DriverRepository extends JpaRepository<Driver, UUID> {
     Page<Driver> findByTeamLeagueId(UUID leagueId, Pageable pageable);
     Page<Driver> findByStatus(DriverStatus status, Pageable pageable);
 
-    @org.springframework.data.jpa.repository.Query(
+    @Query(
         "SELECT d FROM Driver d WHERE (:leagueId IS NULL OR d.team.league.id = :leagueId OR d.team.championship.league.id = :leagueId) " +
         "AND (:championshipId IS NULL OR d.team.championship.id = :championshipId) " +
         "AND (:teamId IS NULL OR d.team.id = :teamId)"
     )
     Page<Driver> findByFilter(
-        @org.springframework.data.repository.query.Param("leagueId") UUID leagueId,
-        @org.springframework.data.repository.query.Param("championshipId") UUID championshipId,
-        @org.springframework.data.repository.query.Param("teamId") UUID teamId,
+        @Param("leagueId") UUID leagueId,
+        @Param("championshipId") UUID championshipId,
+        @Param("teamId") UUID teamId,
         Pageable pageable
+    );
+
+    @Query(
+        "SELECT CASE WHEN COUNT(d) > 0 THEN TRUE ELSE FALSE END FROM Driver d WHERE " +
+        "(d.team.league.id = :leagueId OR d.team.championship.league.id = :leagueId) AND " +
+        "LOWER(TRIM(d.name)) = LOWER(TRIM(:name))"
+    )
+    boolean existsByNameInLeague(
+        @Param("leagueId") UUID leagueId,
+        @Param("name") String name
+    );
+
+    @Query(
+        "SELECT CASE WHEN COUNT(d) > 0 THEN TRUE ELSE FALSE END FROM Driver d WHERE " +
+        "(d.team.league.id = :leagueId OR d.team.championship.league.id = :leagueId) AND " +
+        "d.gamertag IS NOT NULL AND LOWER(TRIM(d.gamertag)) = LOWER(TRIM(:gamertag))"
+    )
+    boolean existsByGamertagInLeague(
+        @Param("leagueId") UUID leagueId,
+        @Param("gamertag") String gamertag
     );
 }

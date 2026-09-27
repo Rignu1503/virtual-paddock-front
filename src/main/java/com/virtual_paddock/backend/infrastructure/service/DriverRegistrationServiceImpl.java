@@ -38,6 +38,29 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
         League league = leagueRepository.findById(request.getLeagueId())
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("League")));
 
+        String cleanName = request.getName().trim();
+        String cleanGamertag = (request.getGamertag() != null && !request.getGamertag().isBlank())
+                ? request.getGamertag().trim()
+                : null;
+
+        if (cleanGamertag != null && cleanGamertag.startsWith("@")) {
+            cleanGamertag = cleanGamertag.substring(1).trim();
+        }
+
+        // Validación de Nombre Único en la Liga (tanto en pilotos oficiales como en registros activos)
+        if (driverRepository.existsByNameInLeague(request.getLeagueId(), cleanName) ||
+            registrationRepository.existsActiveByNameInLeague(request.getLeagueId(), cleanName)) {
+            throw new BadRequestException("El nombre de piloto '" + cleanName + "' ya se encuentra registrado o con solicitud pendiente en esta liga.");
+        }
+
+        // Validación de Gamertag Único en la Liga
+        if (cleanGamertag != null && !cleanGamertag.isBlank()) {
+            if (driverRepository.existsByGamertagInLeague(request.getLeagueId(), cleanGamertag) ||
+                registrationRepository.existsActiveByGamertagInLeague(request.getLeagueId(), cleanGamertag)) {
+                throw new BadRequestException("El gamertag '" + cleanGamertag + "' ya se encuentra registrado o con solicitud pendiente en esta liga.");
+            }
+        }
+
         Championship championship = null;
         if (request.getChampionshipId() != null) {
             championship = championshipRepository.findById(request.getChampionshipId())
@@ -51,8 +74,8 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
         }
 
         DriverRegistration registration = DriverRegistration.builder()
-                .name(request.getName().trim())
-                .gamertag(request.getGamertag() != null ? request.getGamertag().trim() : null)
+                .name(cleanName)
+                .gamertag(cleanGamertag)
                 .nationality(request.getNationality() != null ? request.getNationality().trim().toUpperCase() : null)
                 .carNumber(request.getCarNumber() != null ? request.getCarNumber().trim() : null)
                 .carModel(request.getCarModel() != null ? request.getCarModel().trim() : null)
@@ -154,6 +177,46 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
 
         DriverRegistration saved = registrationRepository.save(reg);
         return toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DriverAvailabilityResponse checkAvailability(UUID leagueId, String name, String gamertag) {
+        boolean nameAvail = true;
+        String nameMsg = null;
+
+        if (name != null && !name.isBlank()) {
+            String cleanName = name.trim();
+            if (driverRepository.existsByNameInLeague(leagueId, cleanName) ||
+                registrationRepository.existsActiveByNameInLeague(leagueId, cleanName)) {
+                nameAvail = false;
+                nameMsg = "El nombre '" + cleanName + "' ya está registrado o con solicitud pendiente.";
+            }
+        }
+
+        boolean gamertagAvail = true;
+        String gamertagMsg = null;
+
+        if (gamertag != null && !gamertag.isBlank()) {
+            String cleanGamertag = gamertag.trim();
+            if (cleanGamertag.startsWith("@")) {
+                cleanGamertag = cleanGamertag.substring(1).trim();
+            }
+            if (!cleanGamertag.isBlank()) {
+                if (driverRepository.existsByGamertagInLeague(leagueId, cleanGamertag) ||
+                    registrationRepository.existsActiveByGamertagInLeague(leagueId, cleanGamertag)) {
+                    gamertagAvail = false;
+                    gamertagMsg = "El gamertag '" + cleanGamertag + "' ya está registrado o con solicitud pendiente.";
+                }
+            }
+        }
+
+        return DriverAvailabilityResponse.builder()
+                .nameAvailable(nameAvail)
+                .gamertagAvailable(gamertagAvail)
+                .nameMessage(nameMsg)
+                .gamertagMessage(gamertagMsg)
+                .build();
     }
 
     @Override

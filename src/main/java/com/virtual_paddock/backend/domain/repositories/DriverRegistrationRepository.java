@@ -31,4 +31,26 @@ public interface DriverRegistrationRepository extends JpaRepository<DriverRegist
     long countByLeagueIdAndStatus(UUID leagueId, DriverRegistrationStatus status);
 
     long countByStatus(DriverRegistrationStatus status);
+
+    @Query(
+        "SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM DriverRegistration r WHERE " +
+        "r.league.id = :leagueId AND " +
+        "r.status IN ('PENDING', 'APPROVED') AND " +
+        "LOWER(TRIM(r.name)) = LOWER(TRIM(:name))"
+    )
+    boolean existsActiveByNameInLeague(
+        @Param("leagueId") UUID leagueId,
+        @Param("name") String name
+    );
+
+    @Query(
+        "SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM DriverRegistration r WHERE " +
+        "r.league.id = :leagueId AND " +
+        "r.status IN ('PENDING', 'APPROVED') AND " +
+        "r.gamertag IS NOT NULL AND LOWER(TRIM(r.gamertag)) = LOWER(TRIM(:gamertag))"
+    )
+    boolean existsActiveByGamertagInLeague(
+        @Param("leagueId") UUID leagueId,
+        @Param("gamertag") String gamertag
+    );
 }
