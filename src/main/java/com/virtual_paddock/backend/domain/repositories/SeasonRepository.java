@@ -11,4 +11,5 @@ import java.util.UUID;
 @Repository
 public interface SeasonRepository extends JpaRepository<Season, UUID> {
     Page<Season> findByChampionshipId(UUID championshipId, Pageable pageable);
+    java.util.List<Season> findByChampionshipId(UUID championshipId);
 }

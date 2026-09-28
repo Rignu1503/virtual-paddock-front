@@ -82,7 +82,7 @@ public class SeasonServiceImpl implements ISeasonService {
     public void delete(UUID id) {
         Season season = find(id);
 
-        // 1. Desvincular equipos de esta temporada para evitar violación de clave foránea
+        // 1. Desvincular equipos de esta temporada para evitar violacion de clave foranea
         teamRepository.clearSeasonReference(id);
 
         // 2. Eliminar todas las rondas / eventos de carrera (cascada a resultados y sanciones)
@@ -91,12 +91,7 @@ public class SeasonServiceImpl implements ISeasonService {
             raceEventRepository.deleteAll(events);
         }
 
-        // 3. Desvincular de la lista en memoria del campeonato si estuviera cargado
-        if (season.getChampionship() != null && season.getChampionship().getSeasons() != null) {
-            season.getChampionship().getSeasons().remove(season);
-        }
-
-        // 4. Eliminar la temporada
+        // 3. Eliminar la temporada
         seasonRepository.delete(season);
     }
 }

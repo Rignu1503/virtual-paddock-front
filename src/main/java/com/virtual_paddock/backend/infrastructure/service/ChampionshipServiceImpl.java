@@ -30,6 +30,7 @@ public class ChampionshipServiceImpl implements IChampionshipService {
     private final LeagueRepository leagueRepository;
     private final PointsSystemRepository pointsSystemRepository;
     private final TeamRepository teamRepository;
+    private final SeasonRepository seasonRepository;
     private final RaceEventRepository raceEventRepository;
     private final ChampionshipMapper championshipMapper;
 
@@ -105,8 +106,9 @@ public class ChampionshipServiceImpl implements IChampionshipService {
         teamRepository.clearChampionshipReference(id);
 
         // 2. Limpiar eventos y resultados de cada temporada antes de borrar el campeonato
-        if (championship.getSeasons() != null) {
-            for (Season season : championship.getSeasons()) {
+        List<Season> seasons = seasonRepository.findByChampionshipId(id);
+        if (seasons != null && !seasons.isEmpty()) {
+            for (Season season : seasons) {
                 teamRepository.clearSeasonReference(season.getId());
                 List<RaceEvent> events = raceEventRepository.findBySeasonId(season.getId());
                 if (!events.isEmpty()) {
