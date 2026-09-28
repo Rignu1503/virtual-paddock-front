@@ -13,4 +13,5 @@ public class ChampionshipBasicResponse {
 
     private UUID id;
     private String gameName;
+    private Integer maxDriversPerTeam;
 }
