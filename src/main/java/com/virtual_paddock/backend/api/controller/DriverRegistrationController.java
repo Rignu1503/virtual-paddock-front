@@ -38,9 +38,10 @@ public class DriverRegistrationController {
     public ResponseEntity<ApiResponse<DriverAvailabilityResponse>> checkAvailability(
             @RequestParam UUID leagueId,
             @RequestParam(required = false) String name,
-            @RequestParam(required = false) String gamertag
+            @RequestParam(required = false) String gamertag,
+            @RequestParam(required = false) String carNumber
     ) {
-        DriverAvailabilityResponse response = registrationService.checkAvailability(leagueId, name, gamertag);
+        DriverAvailabilityResponse response = registrationService.checkAvailability(leagueId, name, gamertag, carNumber);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

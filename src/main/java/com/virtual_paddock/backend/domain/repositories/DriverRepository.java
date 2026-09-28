@@ -48,4 +48,16 @@ public interface DriverRepository extends JpaRepository<Driver, UUID> {
         @Param("leagueId") UUID leagueId,
         @Param("gamertag") String gamertag
     );
+
+    @Query(
+        "SELECT CASE WHEN COUNT(d) > 0 THEN TRUE ELSE FALSE END FROM Driver d WHERE " +
+        "(d.team.league.id = :leagueId OR d.team.championship.league.id = :leagueId) AND " +
+        "d.carNumber IS NOT NULL AND " +
+        "(LOWER(TRIM(d.carNumber)) = LOWER(TRIM(:cleanCarNumber)) OR " +
+        "LOWER(TRIM(d.carNumber)) = LOWER(CONCAT('#', TRIM(:cleanCarNumber))))"
+    )
+    boolean existsByCarNumberInLeague(
+        @Param("leagueId") UUID leagueId,
+        @Param("cleanCarNumber") String cleanCarNumber
+    );
 }

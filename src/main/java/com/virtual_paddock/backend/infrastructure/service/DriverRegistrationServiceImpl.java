@@ -61,6 +61,21 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
             }
         }
 
+        String cleanCarNumber = (request.getCarNumber() != null && !request.getCarNumber().isBlank())
+                ? request.getCarNumber().trim()
+                : null;
+        if (cleanCarNumber != null && cleanCarNumber.startsWith("#")) {
+            cleanCarNumber = cleanCarNumber.substring(1).trim();
+        }
+
+        // Validación de Dorsal Único en la Liga
+        if (cleanCarNumber != null && !cleanCarNumber.isBlank()) {
+            if (driverRepository.existsByCarNumberInLeague(request.getLeagueId(), cleanCarNumber) ||
+                registrationRepository.existsActiveByCarNumberInLeague(request.getLeagueId(), cleanCarNumber)) {
+                throw new BadRequestException("El dorsal #" + cleanCarNumber + " ya se encuentra registrado o con solicitud pendiente en esta liga.");
+            }
+        }
+
         Championship championship = null;
         if (request.getChampionshipId() != null) {
             championship = championshipRepository.findById(request.getChampionshipId())
@@ -181,7 +196,7 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
 
     @Override
     @Transactional(readOnly = true)
-    public DriverAvailabilityResponse checkAvailability(UUID leagueId, String name, String gamertag) {
+    public DriverAvailabilityResponse checkAvailability(UUID leagueId, String name, String gamertag, String carNumber) {
         boolean nameAvail = true;
         String nameMsg = null;
 
@@ -211,11 +226,30 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
             }
         }
 
+        boolean carNumberAvail = true;
+        String carNumberMsg = null;
+
+        if (carNumber != null && !carNumber.isBlank()) {
+            String cleanCarNumber = carNumber.trim();
+            if (cleanCarNumber.startsWith("#")) {
+                cleanCarNumber = cleanCarNumber.substring(1).trim();
+            }
+            if (!cleanCarNumber.isBlank()) {
+                if (driverRepository.existsByCarNumberInLeague(leagueId, cleanCarNumber) ||
+                    registrationRepository.existsActiveByCarNumberInLeague(leagueId, cleanCarNumber)) {
+                    carNumberAvail = false;
+                    carNumberMsg = "El dorsal #" + cleanCarNumber + " ya está registrado o con solicitud pendiente.";
+                }
+            }
+        }
+
         return DriverAvailabilityResponse.builder()
                 .nameAvailable(nameAvail)
                 .gamertagAvailable(gamertagAvail)
+                .carNumberAvailable(carNumberAvail)
                 .nameMessage(nameMsg)
                 .gamertagMessage(gamertagMsg)
+                .carNumberMessage(carNumberMsg)
                 .build();
     }
 

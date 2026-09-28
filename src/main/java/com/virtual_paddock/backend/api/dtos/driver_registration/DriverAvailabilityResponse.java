@@ -10,6 +10,8 @@ import lombok.*;
 public class DriverAvailabilityResponse {
     private boolean nameAvailable;
     private boolean gamertagAvailable;
+    private boolean carNumberAvailable;
     private String nameMessage;
     private String gamertagMessage;
+    private String carNumberMessage;
 }

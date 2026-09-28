@@ -53,4 +53,17 @@ public interface DriverRegistrationRepository extends JpaRepository<DriverRegist
         @Param("leagueId") UUID leagueId,
         @Param("gamertag") String gamertag
     );
+
+    @Query(
+        "SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM DriverRegistration r WHERE " +
+        "r.league.id = :leagueId AND " +
+        "r.status IN ('PENDING', 'APPROVED') AND " +
+        "r.carNumber IS NOT NULL AND " +
+        "(LOWER(TRIM(r.carNumber)) = LOWER(TRIM(:cleanCarNumber)) OR " +
+        "LOWER(TRIM(r.carNumber)) = LOWER(CONCAT('#', TRIM(:cleanCarNumber))))"
+    )
+    boolean existsActiveByCarNumberInLeague(
+        @Param("leagueId") UUID leagueId,
+        @Param("cleanCarNumber") String cleanCarNumber
+    );
 }

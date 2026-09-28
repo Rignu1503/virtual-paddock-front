@@ -60,6 +60,16 @@ public class DriverServiceImpl implements IDriverService {
                     throw new BadRequestException("El gamertag '" + cleanGamertag + "' ya se encuentra registrado en esta liga.");
                 }
             }
+
+            if (request.getCarNumber() != null && !request.getCarNumber().isBlank()) {
+                String cleanCarNumber = request.getCarNumber().trim();
+                if (cleanCarNumber.startsWith("#")) {
+                    cleanCarNumber = cleanCarNumber.substring(1).trim();
+                }
+                if (!cleanCarNumber.isBlank() && driverRepository.existsByCarNumberInLeague(leagueId, cleanCarNumber)) {
+                    throw new BadRequestException("El dorsal #" + cleanCarNumber + " ya se encuentra registrado en esta liga.");
+                }
+            }
         }
 
         Driver driver = driverMapper.toEntity(request);
