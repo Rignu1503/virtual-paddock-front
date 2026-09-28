@@ -24,4 +24,5 @@ public class ChampionshipResponse {
     private String sprintPointsSystemName;
     private UUID leagueId;
     private String leagueName;
+    private Integer maxDriversPerTeam;
 }

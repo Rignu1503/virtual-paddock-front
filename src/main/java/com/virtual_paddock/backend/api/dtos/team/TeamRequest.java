@@ -23,4 +23,6 @@ public class TeamRequest {
     private UUID championshipId;
 
     private UUID seasonId;
+
+    private Integer maxDrivers;
 }

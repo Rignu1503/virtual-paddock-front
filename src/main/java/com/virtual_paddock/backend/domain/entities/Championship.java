@@ -40,6 +40,10 @@ public class Championship {
     @Builder.Default
     private Integer polePoints = 0; // Puntos adicionales por pole
 
+    @Column(name = "max_drivers_per_team")
+    @Builder.Default
+    private Integer maxDriversPerTeam = 2;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "points_system_id")
     private PointsSystem pointsSystemRef;

@@ -38,6 +38,15 @@ public class DriverServiceImpl implements IDriverService {
         Team team = teamRepository.findById(request.getTeamId())
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Team")));
 
+        int limit = (team.getMaxDrivers() != null && team.getMaxDrivers() > 0)
+                ? team.getMaxDrivers()
+                : (team.getChampionship() != null && team.getChampionship().getMaxDriversPerTeam() != null
+                    ? team.getChampionship().getMaxDriversPerTeam() : 2);
+        long currentDrivers = driverRepository.countByTeamId(team.getId());
+        if (currentDrivers >= limit) {
+            throw new BadRequestException("El equipo '" + team.getName() + "' ya está completo (" + currentDrivers + "/" + limit + " pilotos).");
+        }
+
         UUID leagueId = null;
         if (team.getLeague() != null) {
             leagueId = team.getLeague().getId();
@@ -110,9 +119,17 @@ public class DriverServiceImpl implements IDriverService {
     public DriverResponse update(UUID id, DriverUpdate update) {
         Driver driver = find(id);
 
-        if (update.getTeamId() != null) {
+        if (update.getTeamId() != null && (driver.getTeam() == null || !driver.getTeam().getId().equals(update.getTeamId()))) {
             Team team = teamRepository.findById(update.getTeamId())
                     .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Team")));
+            int limit = (team.getMaxDrivers() != null && team.getMaxDrivers() > 0)
+                    ? team.getMaxDrivers()
+                    : (team.getChampionship() != null && team.getChampionship().getMaxDriversPerTeam() != null
+                        ? team.getChampionship().getMaxDriversPerTeam() : 2);
+            long currentDrivers = driverRepository.countByTeamId(team.getId());
+            if (currentDrivers >= limit) {
+                throw new BadRequestException("El equipo '" + team.getName() + "' ya está completo (" + currentDrivers + "/" + limit + " pilotos).");
+            }
             driver.setTeam(team);
         }
 

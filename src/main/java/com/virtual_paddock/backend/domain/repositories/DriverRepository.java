@@ -14,6 +14,7 @@ import java.util.UUID;
 @Repository
 public interface DriverRepository extends JpaRepository<Driver, UUID> {
     Page<Driver> findByTeamId(UUID teamId, Pageable pageable);
+    long countByTeamId(UUID teamId);
     Page<Driver> findByTeamLeagueId(UUID leagueId, Pageable pageable);
     Page<Driver> findByStatus(DriverStatus status, Pageable pageable);
 

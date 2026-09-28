@@ -31,6 +31,10 @@ public class Team {
 
     private String colorHex;
 
+    @Column(name = "max_drivers")
+    @Builder.Default
+    private Integer maxDrivers = 2;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "league_id")
     private League league;

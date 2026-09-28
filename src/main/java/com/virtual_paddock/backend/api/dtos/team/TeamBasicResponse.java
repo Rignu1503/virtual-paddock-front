@@ -14,4 +14,7 @@ public class TeamBasicResponse {
     private String championshipName;
     private UUID seasonId;
     private String seasonName;
+    private Integer maxDrivers;
+    private Integer currentDriversCount;
+    private Boolean isFull;
 }

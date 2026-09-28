@@ -34,4 +34,6 @@ public class ChampionshipRequest {
 
     @NotNull(message = "El ID de la liga es obligatorio")
     private UUID leagueId;
+
+    private Integer maxDriversPerTeam;
 }

@@ -86,6 +86,14 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
         if (request.getPreferredTeamId() != null) {
             preferredTeam = teamRepository.findById(request.getPreferredTeamId())
                     .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Team")));
+            int limit = (preferredTeam.getMaxDrivers() != null && preferredTeam.getMaxDrivers() > 0)
+                    ? preferredTeam.getMaxDrivers()
+                    : (preferredTeam.getChampionship() != null && preferredTeam.getChampionship().getMaxDriversPerTeam() != null
+                        ? preferredTeam.getChampionship().getMaxDriversPerTeam() : 2);
+            long currentCount = driverRepository.countByTeamId(preferredTeam.getId());
+            if (currentCount >= limit) {
+                throw new BadRequestException("El equipo '" + preferredTeam.getName() + "' ya está completo (" + currentCount + "/" + limit + " pilotos). Por favor selecciona otra escudería.");
+            }
         }
 
         DriverRegistration registration = DriverRegistration.builder()
@@ -146,6 +154,15 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
 
         Team assignedTeam = teamRepository.findById(approval.getAssignedTeamId())
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Team")));
+
+        int limit = (assignedTeam.getMaxDrivers() != null && assignedTeam.getMaxDrivers() > 0)
+                ? assignedTeam.getMaxDrivers()
+                : (assignedTeam.getChampionship() != null && assignedTeam.getChampionship().getMaxDriversPerTeam() != null
+                    ? assignedTeam.getChampionship().getMaxDriversPerTeam() : 2);
+        long currentDrivers = driverRepository.countByTeamId(assignedTeam.getId());
+        if (currentDrivers >= limit) {
+            throw new BadRequestException("El equipo '" + assignedTeam.getName() + "' ya ha alcanzado el límite máximo de pilotos (" + currentDrivers + "/" + limit + ").");
+        }
 
         String finalCarNumber = (approval.getCarNumber() != null && !approval.getCarNumber().isBlank())
                 ? approval.getCarNumber().trim()

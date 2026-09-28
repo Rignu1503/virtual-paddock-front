@@ -19,4 +19,6 @@ public class TeamUpdate {
     private java.util.UUID championshipId;
 
     private java.util.UUID seasonId;
+
+    private Integer maxDrivers;
 }

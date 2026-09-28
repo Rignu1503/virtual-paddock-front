@@ -12,6 +12,8 @@ public interface TeamMapper {
     @Mapping(target = "championshipName", source = "championship.gameName")
     @Mapping(target = "seasonId", source = "season.id")
     @Mapping(target = "seasonName", source = "season.seasonName")
+    @Mapping(target = "currentDriversCount", ignore = true)
+    @Mapping(target = "isFull", ignore = true)
     TeamResponse toResponse(Team team);
 
     @Mapping(target = "leagueId", source = "league.id")
@@ -19,6 +21,8 @@ public interface TeamMapper {
     @Mapping(target = "championshipName", source = "championship.gameName")
     @Mapping(target = "seasonId", source = "season.id")
     @Mapping(target = "seasonName", source = "season.seasonName")
+    @Mapping(target = "currentDriversCount", ignore = true)
+    @Mapping(target = "isFull", ignore = true)
     TeamBasicResponse toBasicResponse(Team team);
 
     @Mapping(target = "id", ignore = true)
