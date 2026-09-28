@@ -4,9 +4,9 @@ import com.virtual_paddock.backend.api.dtos.PageResponse;
 import com.virtual_paddock.backend.api.dtos.championship.*;
 import com.virtual_paddock.backend.domain.entities.Championship;
 import com.virtual_paddock.backend.domain.entities.League;
-import com.virtual_paddock.backend.domain.repositories.ChampionshipRepository;
-import com.virtual_paddock.backend.domain.repositories.LeagueRepository;
-import com.virtual_paddock.backend.domain.repositories.PointsSystemRepository;
+import com.virtual_paddock.backend.domain.entities.RaceEvent;
+import com.virtual_paddock.backend.domain.entities.Season;
+import com.virtual_paddock.backend.domain.repositories.*;
 import com.virtual_paddock.backend.infrastructure.abstract_service.IChampionshipService;
 import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.ChampionshipMapper;
@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -28,6 +29,8 @@ public class ChampionshipServiceImpl implements IChampionshipService {
     private final ChampionshipRepository championshipRepository;
     private final LeagueRepository leagueRepository;
     private final PointsSystemRepository pointsSystemRepository;
+    private final TeamRepository teamRepository;
+    private final RaceEventRepository raceEventRepository;
     private final ChampionshipMapper championshipMapper;
 
     private Championship find(UUID id) {
@@ -97,6 +100,22 @@ public class ChampionshipServiceImpl implements IChampionshipService {
     @Override
     public void delete(UUID id) {
         Championship championship = find(id);
+
+        // 1. Desvincular equipos asociados al campeonato y a sus temporadas
+        teamRepository.clearChampionshipReference(id);
+
+        // 2. Limpiar eventos y resultados de cada temporada antes de borrar el campeonato
+        if (championship.getSeasons() != null) {
+            for (Season season : championship.getSeasons()) {
+                teamRepository.clearSeasonReference(season.getId());
+                List<RaceEvent> events = raceEventRepository.findBySeasonId(season.getId());
+                if (!events.isEmpty()) {
+                    raceEventRepository.deleteAll(events);
+                }
+            }
+        }
+
+        // 3. Eliminar el campeonato (cascada a temporadas)
         championshipRepository.delete(championship);
     }
 }

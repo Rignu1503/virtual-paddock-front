@@ -27,7 +27,7 @@ public class Season {
     @JoinColumn(name = "championship_id", nullable = false)
     private Championship championship;
 
-    @OneToMany(mappedBy = "season", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "season", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<RaceEvent> raceEvents = new ArrayList<>();
 

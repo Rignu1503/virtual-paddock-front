@@ -14,6 +14,14 @@ public interface TeamRepository extends JpaRepository<Team, UUID> {
     Page<Team> findByChampionshipId(UUID championshipId, Pageable pageable);
     Page<Team> findBySeasonId(UUID seasonId, Pageable pageable);
 
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("UPDATE Team t SET t.season = null WHERE t.season.id = :seasonId")
+    void clearSeasonReference(@org.springframework.data.repository.query.Param("seasonId") UUID seasonId);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("UPDATE Team t SET t.championship = null, t.season = null WHERE t.championship.id = :championshipId")
+    void clearChampionshipReference(@org.springframework.data.repository.query.Param("championshipId") UUID championshipId);
+
     @org.springframework.data.jpa.repository.Query(
         "SELECT t FROM Team t WHERE (:leagueId IS NULL OR t.league.id = :leagueId) " +
         "AND (:championshipId IS NULL OR t.championship.id = :championshipId) " +

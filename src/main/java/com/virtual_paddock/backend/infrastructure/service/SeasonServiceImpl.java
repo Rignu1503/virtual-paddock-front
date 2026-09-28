@@ -3,9 +3,12 @@ package com.virtual_paddock.backend.infrastructure.service;
 import com.virtual_paddock.backend.api.dtos.PageResponse;
 import com.virtual_paddock.backend.api.dtos.season.*;
 import com.virtual_paddock.backend.domain.entities.Championship;
+import com.virtual_paddock.backend.domain.entities.RaceEvent;
 import com.virtual_paddock.backend.domain.entities.Season;
 import com.virtual_paddock.backend.domain.repositories.ChampionshipRepository;
+import com.virtual_paddock.backend.domain.repositories.RaceEventRepository;
 import com.virtual_paddock.backend.domain.repositories.SeasonRepository;
+import com.virtual_paddock.backend.domain.repositories.TeamRepository;
 import com.virtual_paddock.backend.infrastructure.abstract_service.ISeasonService;
 import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.SeasonMapper;
@@ -17,6 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -26,6 +30,8 @@ public class SeasonServiceImpl implements ISeasonService {
 
     private final SeasonRepository seasonRepository;
     private final ChampionshipRepository championshipRepository;
+    private final TeamRepository teamRepository;
+    private final RaceEventRepository raceEventRepository;
     private final SeasonMapper seasonMapper;
 
     private Season find(UUID id) {
@@ -75,6 +81,22 @@ public class SeasonServiceImpl implements ISeasonService {
     @Override
     public void delete(UUID id) {
         Season season = find(id);
+
+        // 1. Desvincular equipos de esta temporada para evitar violación de clave foránea
+        teamRepository.clearSeasonReference(id);
+
+        // 2. Eliminar todas las rondas / eventos de carrera (cascada a resultados y sanciones)
+        List<RaceEvent> events = raceEventRepository.findBySeasonId(id);
+        if (!events.isEmpty()) {
+            raceEventRepository.deleteAll(events);
+        }
+
+        // 3. Desvincular de la lista en memoria del campeonato si estuviera cargado
+        if (season.getChampionship() != null && season.getChampionship().getSeasons() != null) {
+            season.getChampionship().getSeasons().remove(season);
+        }
+
+        // 4. Eliminar la temporada
         seasonRepository.delete(season);
     }
 }
