@@ -24,6 +24,7 @@ public class DriverRegistrationResponse {
     private String contactType;
     private String phoneWhatsapp;
     private String notes;
+    private String steamId;
     private DriverRegistrationStatus status;
 
     private UUID leagueId;

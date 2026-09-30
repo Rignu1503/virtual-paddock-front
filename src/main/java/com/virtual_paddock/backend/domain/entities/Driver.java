@@ -36,6 +36,9 @@ public class Driver {
     @Column(name = "car_model")
     private String carModel; // Modelo de auto ej: "Porsche 992 GT3 R"
 
+    @Column(name = "steam_id", length = 100)
+    private String steamId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private DriverStatus status;

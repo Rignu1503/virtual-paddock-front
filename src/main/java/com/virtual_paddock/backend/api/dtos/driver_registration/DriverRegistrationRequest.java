@@ -47,6 +47,9 @@ public class DriverRegistrationRequest {
     @Size(max = 2000, message = "Las notas no pueden exceder 2000 caracteres")
     private String notes;
 
+    @Size(max = 100, message = "El Steam ID no puede exceder 100 caracteres")
+    private String steamId;
+
     @NotNull(message = "El ID de la liga es requerido")
     private UUID leagueId;
 

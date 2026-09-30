@@ -52,6 +52,9 @@ public class DriverRegistration {
     @Column(name = "phone_whatsapp", length = 50)
     private String phoneWhatsapp;
 
+    @Column(name = "steam_id", length = 100)
+    private String steamId;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 

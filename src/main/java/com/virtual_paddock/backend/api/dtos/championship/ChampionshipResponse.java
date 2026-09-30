@@ -25,4 +25,5 @@ public class ChampionshipResponse {
     private UUID leagueId;
     private String leagueName;
     private Integer maxDriversPerTeam;
+    private Boolean requireSteamId;
 }

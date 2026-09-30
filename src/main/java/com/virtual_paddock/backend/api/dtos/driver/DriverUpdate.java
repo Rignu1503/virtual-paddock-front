@@ -23,6 +23,9 @@ public class DriverUpdate {
     @Size(max = 100, message = "El modelo de auto no puede exceder 100 caracteres")
     private String carModel;
 
+    @Size(max = 100, message = "El Steam ID no puede exceder 100 caracteres")
+    private String steamId;
+
     private DriverStatus status;
     private UUID teamId;
 }

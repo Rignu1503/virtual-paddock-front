@@ -26,6 +26,9 @@ public class DriverRequest {
     @Size(max = 100, message = "El modelo de auto no puede exceder 100 caracteres")
     private String carModel; // ej: "Porsche 992 GT3 R"
 
+    @Size(max = 100, message = "El Steam ID no puede exceder 100 caracteres")
+    private String steamId;
+
     @NotNull(message = "El estado del piloto es obligatorio")
     private DriverStatus status;
 

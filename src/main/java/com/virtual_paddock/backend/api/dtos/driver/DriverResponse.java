@@ -13,6 +13,7 @@ public class DriverResponse {
     private String nationality;
     private String carNumber;
     private String carModel;
+    private String steamId;
     private DriverStatus status;
     private UUID teamId;
     private String teamName;

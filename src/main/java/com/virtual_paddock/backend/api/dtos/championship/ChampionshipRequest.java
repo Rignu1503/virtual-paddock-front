@@ -36,4 +36,6 @@ public class ChampionshipRequest {
     private UUID leagueId;
 
     private Integer maxDriversPerTeam;
+
+    private Boolean requireSteamId;
 }

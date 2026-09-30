@@ -44,6 +44,10 @@ public class Championship {
     @Builder.Default
     private Integer maxDriversPerTeam = 2;
 
+    @Column(name = "require_steam_id")
+    @Builder.Default
+    private Boolean requireSteamId = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "points_system_id")
     private PointsSystem pointsSystemRef;

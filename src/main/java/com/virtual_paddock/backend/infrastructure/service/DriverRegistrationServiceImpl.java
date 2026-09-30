@@ -96,6 +96,16 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
             }
         }
 
+        String cleanSteamId = (request.getSteamId() != null && !request.getSteamId().isBlank())
+                ? request.getSteamId().trim()
+                : null;
+
+        if (championship != null && Boolean.TRUE.equals(championship.getRequireSteamId())) {
+            if (cleanSteamId == null || cleanSteamId.isBlank()) {
+                throw new BadRequestException("El Steam ID es obligatorio para inscribirse en este campeonato.");
+            }
+        }
+
         DriverRegistration registration = DriverRegistration.builder()
                 .name(cleanName)
                 .gamertag(cleanGamertag)
@@ -107,6 +117,7 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
                 .contactType(request.getContactType() != null ? request.getContactType().trim().toUpperCase() : "DISCORD")
                 .phoneWhatsapp(request.getPhoneWhatsapp() != null ? request.getPhoneWhatsapp().trim() : null)
                 .notes(request.getNotes() != null ? request.getNotes().trim() : null)
+                .steamId(cleanSteamId)
                 .status(DriverRegistrationStatus.PENDING)
                 .league(league)
                 .championship(championship)
@@ -179,6 +190,7 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
                 .nationality(reg.getNationality())
                 .carNumber(finalCarNumber)
                 .carModel(finalCarModel)
+                .steamId(reg.getSteamId())
                 .team(assignedTeam)
                 .status(DriverStatus.ACTIVE)
                 .build();
@@ -292,6 +304,7 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
                 .contactType(reg.getContactType())
                 .phoneWhatsapp(reg.getPhoneWhatsapp())
                 .notes(reg.getNotes())
+                .steamId(reg.getSteamId())
                 .status(reg.getStatus())
                 .leagueId(reg.getLeague() != null ? reg.getLeague().getId() : null)
                 .leagueName(reg.getLeague() != null ? reg.getLeague().getName() : null)

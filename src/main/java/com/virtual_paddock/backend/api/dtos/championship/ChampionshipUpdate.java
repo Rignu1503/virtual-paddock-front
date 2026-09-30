@@ -31,4 +31,6 @@ public class ChampionshipUpdate {
     private UUID sprintPointsSystemId;
 
     private Integer maxDriversPerTeam;
+
+    private Boolean requireSteamId;
 }
