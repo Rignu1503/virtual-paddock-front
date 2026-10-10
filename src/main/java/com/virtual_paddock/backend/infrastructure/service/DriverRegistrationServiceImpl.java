@@ -38,6 +38,12 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
         League league = leagueRepository.findById(request.getLeagueId())
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("League")));
 
+        Championship championship = null;
+        if (request.getChampionshipId() != null) {
+            championship = championshipRepository.findById(request.getChampionshipId())
+                    .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Championship")));
+        }
+
         String cleanName = request.getName().trim();
         String cleanGamertag = (request.getGamertag() != null && !request.getGamertag().isBlank())
                 ? request.getGamertag().trim()
@@ -47,17 +53,32 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
             cleanGamertag = cleanGamertag.substring(1).trim();
         }
 
-        // Validación de Nombre Único en la Liga (tanto en pilotos oficiales como en registros activos)
-        if (driverRepository.existsByNameInLeague(request.getLeagueId(), cleanName) ||
-            registrationRepository.existsActiveByNameInLeague(request.getLeagueId(), cleanName)) {
-            throw new BadRequestException("El nombre de piloto '" + cleanName + "' ya se encuentra registrado o con solicitud pendiente en esta liga.");
-        }
+        // Si hay campeonato, validar unicidad a nivel de campeonato (permite mismo piloto en otros torneos)
+        if (championship != null) {
+            UUID champId = championship.getId();
+            if (driverRepository.existsByNameInChampionship(champId, cleanName) ||
+                registrationRepository.existsActiveByNameInChampionship(champId, cleanName)) {
+                throw new BadRequestException("El nombre de piloto '" + cleanName + "' ya se encuentra registrado o con solicitud pendiente en este campeonato.");
+            }
 
-        // Validación de Gamertag Único en la Liga
-        if (cleanGamertag != null && !cleanGamertag.isBlank()) {
-            if (driverRepository.existsByGamertagInLeague(request.getLeagueId(), cleanGamertag) ||
-                registrationRepository.existsActiveByGamertagInLeague(request.getLeagueId(), cleanGamertag)) {
-                throw new BadRequestException("El gamertag '" + cleanGamertag + "' ya se encuentra registrado o con solicitud pendiente en esta liga.");
+            if (cleanGamertag != null && !cleanGamertag.isBlank()) {
+                if (driverRepository.existsByGamertagInChampionship(champId, cleanGamertag) ||
+                    registrationRepository.existsActiveByGamertagInChampionship(champId, cleanGamertag)) {
+                    throw new BadRequestException("El gamertag '" + cleanGamertag + "' ya se encuentra registrado o con solicitud pendiente en este campeonato.");
+                }
+            }
+        } else {
+            // Sin campeonato especifico: validar a nivel de liga
+            if (driverRepository.existsByNameInLeague(request.getLeagueId(), cleanName) ||
+                registrationRepository.existsActiveByNameInLeague(request.getLeagueId(), cleanName)) {
+                throw new BadRequestException("El nombre de piloto '" + cleanName + "' ya se encuentra registrado o con solicitud pendiente en esta liga.");
+            }
+
+            if (cleanGamertag != null && !cleanGamertag.isBlank()) {
+                if (driverRepository.existsByGamertagInLeague(request.getLeagueId(), cleanGamertag) ||
+                    registrationRepository.existsActiveByGamertagInLeague(request.getLeagueId(), cleanGamertag)) {
+                    throw new BadRequestException("El gamertag '" + cleanGamertag + "' ya se encuentra registrado o con solicitud pendiente en esta liga.");
+                }
             }
         }
 
@@ -68,18 +89,20 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
             cleanCarNumber = cleanCarNumber.substring(1).trim();
         }
 
-        // Validación de Dorsal Único en la Liga
+        // Validacion de dorsal: igual que nombre/gamertag, scoped al campeonato si aplica
         if (cleanCarNumber != null && !cleanCarNumber.isBlank()) {
-            if (driverRepository.existsByCarNumberInLeague(request.getLeagueId(), cleanCarNumber) ||
-                registrationRepository.existsActiveByCarNumberInLeague(request.getLeagueId(), cleanCarNumber)) {
-                throw new BadRequestException("El dorsal #" + cleanCarNumber + " ya se encuentra registrado o con solicitud pendiente en esta liga.");
+            if (championship != null) {
+                UUID champId = championship.getId();
+                if (driverRepository.existsByCarNumberInChampionship(champId, cleanCarNumber) ||
+                    registrationRepository.existsActiveByCarNumberInChampionship(champId, cleanCarNumber)) {
+                    throw new BadRequestException("El dorsal #" + cleanCarNumber + " ya se encuentra registrado o con solicitud pendiente en este campeonato.");
+                }
+            } else {
+                if (driverRepository.existsByCarNumberInLeague(request.getLeagueId(), cleanCarNumber) ||
+                    registrationRepository.existsActiveByCarNumberInLeague(request.getLeagueId(), cleanCarNumber)) {
+                    throw new BadRequestException("El dorsal #" + cleanCarNumber + " ya se encuentra registrado o con solicitud pendiente en esta liga.");
+                }
             }
-        }
-
-        Championship championship = null;
-        if (request.getChampionshipId() != null) {
-            championship = championshipRepository.findById(request.getChampionshipId())
-                    .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Championship")));
         }
 
         Team preferredTeam = null;
@@ -172,7 +195,7 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
                     ? assignedTeam.getChampionship().getMaxDriversPerTeam() : 2);
         long currentDrivers = driverRepository.countByTeamId(assignedTeam.getId());
         if (currentDrivers >= limit) {
-            throw new BadRequestException("El equipo '" + assignedTeam.getName() + "' ya ha alcanzado el límite máximo de pilotos (" + currentDrivers + "/" + limit + ").");
+            throw new BadRequestException("El equipo '" + assignedTeam.getName() + "' ya ha alcanzado el limite maximo de pilotos (" + currentDrivers + "/" + limit + ").");
         }
 
         String finalCarNumber = (approval.getCarNumber() != null && !approval.getCarNumber().isBlank())
@@ -183,7 +206,6 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
                 ? approval.getCarModel().trim()
                 : (reg.getCarModel() != null ? reg.getCarModel() : assignedTeam.getCarModel());
 
-        // Crear piloto oficial activo
         Driver driver = Driver.builder()
                 .name(reg.getName())
                 .gamertag(reg.getGamertag())
@@ -197,7 +219,6 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
 
         Driver savedDriver = driverRepository.save(driver);
 
-        // Actualizar solicitud a aprobada
         reg.setStatus(DriverRegistrationStatus.APPROVED);
         reg.setAssignedTeam(assignedTeam);
         reg.setReviewedAt(LocalDateTime.now());
@@ -225,16 +246,24 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
 
     @Override
     @Transactional(readOnly = true)
-    public DriverAvailabilityResponse checkAvailability(UUID leagueId, String name, String gamertag, String carNumber) {
+    public DriverAvailabilityResponse checkAvailability(UUID leagueId, UUID championshipId, String name, String gamertag, String carNumber) {
         boolean nameAvail = true;
         String nameMsg = null;
 
         if (name != null && !name.isBlank()) {
             String cleanName = name.trim();
-            if (driverRepository.existsByNameInLeague(leagueId, cleanName) ||
-                registrationRepository.existsActiveByNameInLeague(leagueId, cleanName)) {
-                nameAvail = false;
-                nameMsg = "El nombre '" + cleanName + "' ya está registrado o con solicitud pendiente.";
+            if (championshipId != null) {
+                if (driverRepository.existsByNameInChampionship(championshipId, cleanName) ||
+                    registrationRepository.existsActiveByNameInChampionship(championshipId, cleanName)) {
+                    nameAvail = false;
+                    nameMsg = "El nombre '" + cleanName + "' ya esta registrado o con solicitud pendiente en este campeonato.";
+                }
+            } else {
+                if (driverRepository.existsByNameInLeague(leagueId, cleanName) ||
+                    registrationRepository.existsActiveByNameInLeague(leagueId, cleanName)) {
+                    nameAvail = false;
+                    nameMsg = "El nombre '" + cleanName + "' ya esta registrado o con solicitud pendiente en esta liga.";
+                }
             }
         }
 
@@ -247,10 +276,18 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
                 cleanGamertag = cleanGamertag.substring(1).trim();
             }
             if (!cleanGamertag.isBlank()) {
-                if (driverRepository.existsByGamertagInLeague(leagueId, cleanGamertag) ||
-                    registrationRepository.existsActiveByGamertagInLeague(leagueId, cleanGamertag)) {
-                    gamertagAvail = false;
-                    gamertagMsg = "El gamertag '" + cleanGamertag + "' ya está registrado o con solicitud pendiente.";
+                if (championshipId != null) {
+                    if (driverRepository.existsByGamertagInChampionship(championshipId, cleanGamertag) ||
+                        registrationRepository.existsActiveByGamertagInChampionship(championshipId, cleanGamertag)) {
+                        gamertagAvail = false;
+                        gamertagMsg = "El gamertag '" + cleanGamertag + "' ya esta registrado o con solicitud pendiente en este campeonato.";
+                    }
+                } else {
+                    if (driverRepository.existsByGamertagInLeague(leagueId, cleanGamertag) ||
+                        registrationRepository.existsActiveByGamertagInLeague(leagueId, cleanGamertag)) {
+                        gamertagAvail = false;
+                        gamertagMsg = "El gamertag '" + cleanGamertag + "' ya esta registrado o con solicitud pendiente en esta liga.";
+                    }
                 }
             }
         }
@@ -264,10 +301,18 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
                 cleanCarNumber = cleanCarNumber.substring(1).trim();
             }
             if (!cleanCarNumber.isBlank()) {
-                if (driverRepository.existsByCarNumberInLeague(leagueId, cleanCarNumber) ||
-                    registrationRepository.existsActiveByCarNumberInLeague(leagueId, cleanCarNumber)) {
-                    carNumberAvail = false;
-                    carNumberMsg = "El dorsal #" + cleanCarNumber + " ya está registrado o con solicitud pendiente.";
+                if (championshipId != null) {
+                    if (driverRepository.existsByCarNumberInChampionship(championshipId, cleanCarNumber) ||
+                        registrationRepository.existsActiveByCarNumberInChampionship(championshipId, cleanCarNumber)) {
+                        carNumberAvail = false;
+                        carNumberMsg = "El dorsal #" + cleanCarNumber + " ya esta registrado o con solicitud pendiente en este campeonato.";
+                    }
+                } else {
+                    if (driverRepository.existsByCarNumberInLeague(leagueId, cleanCarNumber) ||
+                        registrationRepository.existsActiveByCarNumberInLeague(leagueId, cleanCarNumber)) {
+                        carNumberAvail = false;
+                        carNumberMsg = "El dorsal #" + cleanCarNumber + " ya esta registrado o con solicitud pendiente en esta liga.";
+                    }
                 }
             }
         }

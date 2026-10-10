@@ -30,6 +30,7 @@ public interface DriverRepository extends JpaRepository<Driver, UUID> {
         Pageable pageable
     );
 
+    // Unicidad por LIGA (uso general)
     @Query(
         "SELECT CASE WHEN COUNT(d) > 0 THEN TRUE ELSE FALSE END FROM Driver d WHERE " +
         "(d.team.league.id = :leagueId OR d.team.championship.league.id = :leagueId) AND " +
@@ -37,6 +38,17 @@ public interface DriverRepository extends JpaRepository<Driver, UUID> {
     )
     boolean existsByNameInLeague(
         @Param("leagueId") UUID leagueId,
+        @Param("name") String name
+    );
+
+    // Unicidad por CAMPEONATO (permite mismo piloto en distintos torneos de la misma liga)
+    @Query(
+        "SELECT CASE WHEN COUNT(d) > 0 THEN TRUE ELSE FALSE END FROM Driver d WHERE " +
+        "d.team.championship.id = :championshipId AND " +
+        "LOWER(TRIM(d.name)) = LOWER(TRIM(:name))"
+    )
+    boolean existsByNameInChampionship(
+        @Param("championshipId") UUID championshipId,
         @Param("name") String name
     );
 
@@ -52,6 +64,16 @@ public interface DriverRepository extends JpaRepository<Driver, UUID> {
 
     @Query(
         "SELECT CASE WHEN COUNT(d) > 0 THEN TRUE ELSE FALSE END FROM Driver d WHERE " +
+        "d.team.championship.id = :championshipId AND " +
+        "d.gamertag IS NOT NULL AND LOWER(TRIM(d.gamertag)) = LOWER(TRIM(:gamertag))"
+    )
+    boolean existsByGamertagInChampionship(
+        @Param("championshipId") UUID championshipId,
+        @Param("gamertag") String gamertag
+    );
+
+    @Query(
+        "SELECT CASE WHEN COUNT(d) > 0 THEN TRUE ELSE FALSE END FROM Driver d WHERE " +
         "(d.team.league.id = :leagueId OR d.team.championship.league.id = :leagueId) AND " +
         "d.carNumber IS NOT NULL AND " +
         "(LOWER(TRIM(d.carNumber)) = LOWER(TRIM(:cleanCarNumber)) OR " +
@@ -59,6 +81,18 @@ public interface DriverRepository extends JpaRepository<Driver, UUID> {
     )
     boolean existsByCarNumberInLeague(
         @Param("leagueId") UUID leagueId,
+        @Param("cleanCarNumber") String cleanCarNumber
+    );
+
+    @Query(
+        "SELECT CASE WHEN COUNT(d) > 0 THEN TRUE ELSE FALSE END FROM Driver d WHERE " +
+        "d.team.championship.id = :championshipId AND " +
+        "d.carNumber IS NOT NULL AND " +
+        "(LOWER(TRIM(d.carNumber)) = LOWER(TRIM(:cleanCarNumber)) OR " +
+        "LOWER(TRIM(d.carNumber)) = LOWER(CONCAT('#', TRIM(:cleanCarNumber))))"
+    )
+    boolean existsByCarNumberInChampionship(
+        @Param("championshipId") UUID championshipId,
         @Param("cleanCarNumber") String cleanCarNumber
     );
 }

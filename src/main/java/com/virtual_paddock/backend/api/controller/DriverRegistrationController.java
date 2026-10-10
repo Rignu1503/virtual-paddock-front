@@ -33,15 +33,16 @@ public class DriverRegistrationController {
                 .body(ApiResponse.ok("Inscripción recibida con éxito. Está en espera de aprobación por comisarios.", response));
     }
 
-    // Verificar disponibilidad de nombre y gamertag en la liga (Público)
+    // Verificar disponibilidad de nombre y gamertag en la liga o campeonato (Publico)
     @GetMapping("/check-availability")
     public ResponseEntity<ApiResponse<DriverAvailabilityResponse>> checkAvailability(
             @RequestParam UUID leagueId,
+            @RequestParam(required = false) UUID championshipId,
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String gamertag,
             @RequestParam(required = false) String carNumber
     ) {
-        DriverAvailabilityResponse response = registrationService.checkAvailability(leagueId, name, gamertag, carNumber);
+        DriverAvailabilityResponse response = registrationService.checkAvailability(leagueId, championshipId, name, gamertag, carNumber);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

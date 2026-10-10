@@ -47,6 +47,7 @@ public class DriverServiceImpl implements IDriverService {
             throw new BadRequestException("El equipo '" + team.getName() + "' ya está completo (" + currentDrivers + "/" + limit + " pilotos).");
         }
 
+        UUID championshipId = team.getChampionship() != null ? team.getChampionship().getId() : null;
         UUID leagueId = null;
         if (team.getLeague() != null) {
             leagueId = team.getLeague().getId();
@@ -54,30 +55,40 @@ public class DriverServiceImpl implements IDriverService {
             leagueId = team.getChampionship().getLeague().getId();
         }
 
-        if (leagueId != null) {
-            String cleanName = request.getName().trim();
+        String cleanName = request.getName().trim();
+        String cleanGamertag = (request.getGamertag() != null && !request.getGamertag().isBlank())
+                ? request.getGamertag().trim()
+                : null;
+        if (cleanGamertag != null && cleanGamertag.startsWith("@")) {
+            cleanGamertag = cleanGamertag.substring(1).trim();
+        }
+
+        String cleanCarNumber = (request.getCarNumber() != null && !request.getCarNumber().isBlank())
+                ? request.getCarNumber().trim()
+                : null;
+        if (cleanCarNumber != null && cleanCarNumber.startsWith("#")) {
+            cleanCarNumber = cleanCarNumber.substring(1).trim();
+        }
+
+        if (championshipId != null) {
+            if (driverRepository.existsByNameInChampionship(championshipId, cleanName)) {
+                throw new BadRequestException("El nombre de piloto '" + cleanName + "' ya se encuentra registrado en este campeonato.");
+            }
+            if (cleanGamertag != null && !cleanGamertag.isBlank() && driverRepository.existsByGamertagInChampionship(championshipId, cleanGamertag)) {
+                throw new BadRequestException("El gamertag '" + cleanGamertag + "' ya se encuentra registrado en este campeonato.");
+            }
+            if (cleanCarNumber != null && !cleanCarNumber.isBlank() && driverRepository.existsByCarNumberInChampionship(championshipId, cleanCarNumber)) {
+                throw new BadRequestException("El dorsal #" + cleanCarNumber + " ya se encuentra registrado en este campeonato.");
+            }
+        } else if (leagueId != null) {
             if (driverRepository.existsByNameInLeague(leagueId, cleanName)) {
                 throw new BadRequestException("El nombre de piloto '" + cleanName + "' ya se encuentra registrado en esta liga.");
             }
-
-            if (request.getGamertag() != null && !request.getGamertag().isBlank()) {
-                String cleanGamertag = request.getGamertag().trim();
-                if (cleanGamertag.startsWith("@")) {
-                    cleanGamertag = cleanGamertag.substring(1).trim();
-                }
-                if (!cleanGamertag.isBlank() && driverRepository.existsByGamertagInLeague(leagueId, cleanGamertag)) {
-                    throw new BadRequestException("El gamertag '" + cleanGamertag + "' ya se encuentra registrado en esta liga.");
-                }
+            if (cleanGamertag != null && !cleanGamertag.isBlank() && driverRepository.existsByGamertagInLeague(leagueId, cleanGamertag)) {
+                throw new BadRequestException("El gamertag '" + cleanGamertag + "' ya se encuentra registrado en esta liga.");
             }
-
-            if (request.getCarNumber() != null && !request.getCarNumber().isBlank()) {
-                String cleanCarNumber = request.getCarNumber().trim();
-                if (cleanCarNumber.startsWith("#")) {
-                    cleanCarNumber = cleanCarNumber.substring(1).trim();
-                }
-                if (!cleanCarNumber.isBlank() && driverRepository.existsByCarNumberInLeague(leagueId, cleanCarNumber)) {
-                    throw new BadRequestException("El dorsal #" + cleanCarNumber + " ya se encuentra registrado en esta liga.");
-                }
+            if (cleanCarNumber != null && !cleanCarNumber.isBlank() && driverRepository.existsByCarNumberInLeague(leagueId, cleanCarNumber)) {
+                throw new BadRequestException("El dorsal #" + cleanCarNumber + " ya se encuentra registrado en esta liga.");
             }
         }
 
