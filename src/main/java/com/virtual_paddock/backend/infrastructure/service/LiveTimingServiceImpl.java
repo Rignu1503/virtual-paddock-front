@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.net.http.WebSocket;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
@@ -72,6 +74,42 @@ public class LiveTimingServiceImpl implements ILiveTimingService {
             fallback.put("message", "No fue posible conectar con el servidor de telemetria");
             return fallback;
         }
+    }
+
+    @Override
+    public byte[] getTrackMapImage() {
+        JsonNode snapshot = getLiveTimingSnapshot();
+        if (snapshot == null) return null;
+
+        String track = "";
+        String config = "";
+
+        if (snapshot.has("SessionInfo")) {
+            JsonNode sInfo = snapshot.get("SessionInfo");
+            track = sInfo.has("Track") ? sInfo.get("Track").asText() : "";
+            config = sInfo.has("TrackConfig") ? sInfo.get("TrackConfig").asText() : "";
+        }
+
+        if (track.isEmpty()) {
+            track = "lilski_watkins_glen";
+            config = "boot";
+        }
+
+        String path = "/content/tracks/" + track + (!config.isEmpty() ? "/" + config : "") + "/map.png";
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(liveTimingOrigin + path))
+                    .timeout(Duration.ofSeconds(5))
+                    .GET()
+                    .build();
+            HttpResponse<byte[]> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofByteArray());
+            if (resp.statusCode() == 200) {
+                return resp.body();
+            }
+        } catch (Exception e) {
+            log.warn("Error al descargar mapa del circuito {}: {}", path, e.getMessage());
+        }
+        return null;
     }
 
     private JsonNode fetchSnapshotFromAssettoHosting() throws Exception {
