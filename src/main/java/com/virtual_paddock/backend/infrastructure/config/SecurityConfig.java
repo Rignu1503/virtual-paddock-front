@@ -64,7 +64,8 @@ public class SecurityConfig {
                                 "/api/drivers/**",
                                 "/api/points-systems/**",
                                 "/api/sanctions/**",
-                                "/api/incident-claims/**"
+                                "/api/incident-claims/**",
+                                "/api/live-timing/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
