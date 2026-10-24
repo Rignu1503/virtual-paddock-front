@@ -50,7 +50,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/actuator/**"
                         ).permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/driver-registrations").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/driver-registrations", "/api/incident-claims").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/driver-registrations/check-availability").permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.GET,
@@ -63,7 +63,8 @@ public class SecurityConfig {
                                 "/api/teams/**",
                                 "/api/drivers/**",
                                 "/api/points-systems/**",
-                                "/api/sanctions/**"
+                                "/api/sanctions/**",
+                                "/api/incident-claims/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
