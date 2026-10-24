@@ -28,4 +28,22 @@ public class DriverUpdate {
 
     private DriverStatus status;
     private UUID teamId;
+
+    @Size(max = 2048, message = "La URL del avatar no puede exceder 2048 caracteres")
+    private String avatarUrl;
+
+    @Size(max = 255, message = "La URL de Twitch no puede exceder 255 caracteres")
+    private String twitchUrl;
+
+    @Size(max = 255, message = "La URL de Kick no puede exceder 255 caracteres")
+    private String kickUrl;
+
+    @Size(max = 255, message = "La URL de TikTok no puede exceder 255 caracteres")
+    private String tiktokUrl;
+
+    @Size(max = 255, message = "La URL de YouTube no puede exceder 255 caracteres")
+    private String youtubeUrl;
+
+    @Size(max = 500, message = "La biografía no puede exceder 500 caracteres")
+    private String bio;
 }

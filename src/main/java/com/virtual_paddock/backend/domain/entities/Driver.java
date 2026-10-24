@@ -39,6 +39,24 @@ public class Driver {
     @Column(name = "steam_id", length = 100)
     private String steamId;
 
+    @Column(name = "avatar_url", length = 2048)
+    private String avatarUrl;
+
+    @Column(name = "twitch_url")
+    private String twitchUrl;
+
+    @Column(name = "kick_url")
+    private String kickUrl;
+
+    @Column(name = "tiktok_url")
+    private String tiktokUrl;
+
+    @Column(name = "youtube_url")
+    private String youtubeUrl;
+
+    @Column(name = "bio", length = 500)
+    private String bio;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private DriverStatus status;
