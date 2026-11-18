@@ -1,5 +1,6 @@
 package com.virtual_paddock.backend.domain.entities;
 
+import com.virtual_paddock.backend.utils.enums.SeasonStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,6 +23,18 @@ public class Season {
 
     @Column(nullable = false)
     private String seasonName;
+
+    @Column(name = "is_default")
+    @Builder.Default
+    private Boolean isDefault = false;
+
+    @Column(name = "categories", columnDefinition = "TEXT")
+    private String categories;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    @Builder.Default
+    private SeasonStatus status = SeasonStatus.ACTIVE;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "championship_id", nullable = false)

@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -94,6 +95,8 @@ class StandingsServiceImplTest {
         raceEvent = new RaceEvent();
         raceEvent.setId(raceEventId);
         raceEvent.setSeason(season);
+        raceEvent.setDate(Instant.parse("2026-03-01T15:00:00Z"));
+        raceEvent.setRoundNumber("R01");
         raceEvent.setRaceResults(new ArrayList<>());
         raceEvent.setSanctions(new HashSet<>());
     }
@@ -148,6 +151,8 @@ class StandingsServiceImplTest {
         assertEquals(1, first.getPodiums());
         assertEquals(1, first.getFastestLaps());
         assertEquals(1, first.getPosition());
+        assertEquals("-", first.getGap());
+        assertNull(first.getPrevPosition()); // Solo 1 evento completado
 
         DriverStandingResponse second = standings.get(1);
         assertEquals(driver2Id, second.getDriverId());
@@ -156,6 +161,8 @@ class StandingsServiceImplTest {
         assertEquals(0, second.getWins());
         assertEquals(1, second.getPodiums());
         assertEquals(2, second.getPosition());
+        assertEquals("-2", second.getGap());
+        assertNull(second.getPrevPosition()); // Solo 1 evento completado
     }
 
     @Test
@@ -185,6 +192,85 @@ class StandingsServiceImplTest {
         // Assert
         assertEquals(1, proStandings.size());
         assertEquals("Max Verstappen", proStandings.get(0).getDriverName());
+        assertEquals("-", proStandings.get(0).getGap());
+    }
+
+    @Test
+    void getDriverStandings_withMultipleEvents_computesGapAndPrevPosition() {
+        // Evento 1: Checo (driver2) gana con 25 pts, Max (driver1) queda 2do con 18 pts
+        RaceEvent event1 = new RaceEvent();
+        event1.setId(UUID.randomUUID());
+        event1.setSeason(season);
+        event1.setDate(Instant.parse("2026-03-01T15:00:00Z"));
+        event1.setRoundNumber("R01");
+
+        RaceResult r1Event1 = RaceResult.builder()
+                .id(UUID.randomUUID())
+                .driver(driver2)
+                .position(1)
+                .points(25)
+                .category("PRO")
+                .raceEvent(event1)
+                .build();
+        RaceResult r2Event1 = RaceResult.builder()
+                .id(UUID.randomUUID())
+                .driver(driver1)
+                .position(2)
+                .points(18)
+                .category("PRO")
+                .raceEvent(event1)
+                .build();
+        event1.setRaceResults(List.of(r1Event1, r2Event1));
+
+        // Evento 2: Max (driver1) gana con 25 pts, Checo (driver2) queda 3ro con 15 pts
+        RaceEvent event2 = new RaceEvent();
+        event2.setId(UUID.randomUUID());
+        event2.setSeason(season);
+        event2.setDate(Instant.parse("2026-03-15T15:00:00Z"));
+        event2.setRoundNumber("R02");
+
+        RaceResult r1Event2 = RaceResult.builder()
+                .id(UUID.randomUUID())
+                .driver(driver1)
+                .position(1)
+                .points(25)
+                .category("PRO")
+                .raceEvent(event2)
+                .build();
+        RaceResult r2Event2 = RaceResult.builder()
+                .id(UUID.randomUUID())
+                .driver(driver2)
+                .position(3)
+                .points(15)
+                .category("PRO")
+                .raceEvent(event2)
+                .build();
+        event2.setRaceResults(List.of(r1Event2, r2Event2));
+
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season));
+        when(raceEventRepository.findWithDetailsBySeasonId(seasonId)).thenReturn(List.of(event1, event2));
+
+        // Act
+        List<DriverStandingResponse> standings = standingsService.getDriverStandings(seasonId, null);
+
+        // Assert:
+        // Max total: 18 + 25 = 43 pts (P1 actual, P2 en R01) -> gap: "-", prevPosition: 2
+        // Checo total: 25 + 15 = 40 pts (P2 actual, P1 en R01) -> gap: "-3", prevPosition: 1
+        assertEquals(2, standings.size());
+
+        DriverStandingResponse leader = standings.get(0);
+        assertEquals(driver1Id, leader.getDriverId());
+        assertEquals(43, leader.getPoints());
+        assertEquals(1, leader.getPosition());
+        assertEquals("-", leader.getGap());
+        assertEquals(2, leader.getPrevPosition());
+
+        DriverStandingResponse chaser = standings.get(1);
+        assertEquals(driver2Id, chaser.getDriverId());
+        assertEquals(40, chaser.getPoints());
+        assertEquals(2, chaser.getPosition());
+        assertEquals("-3", chaser.getGap());
+        assertEquals(1, chaser.getPrevPosition());
     }
 
     @Test
@@ -220,6 +306,68 @@ class StandingsServiceImplTest {
         assertEquals(1, teamResponse.getWins());
         assertEquals(2, teamResponse.getPodiums());
         assertEquals(1, teamResponse.getPosition());
+        assertEquals("-", teamResponse.getGap());
+        assertNull(teamResponse.getPrevPosition());
+    }
+
+    @Test
+    void getTeamStandings_withMultipleEvents_computesGapAndPrevPosition() {
+        Team team2 = new Team();
+        team2.setId(UUID.randomUUID());
+        team2.setName("Scuderia Ferrari");
+
+        Driver driver3 = new Driver();
+        driver3.setId(UUID.randomUUID());
+        driver3.setName("Charles Leclerc");
+        driver3.setTeam(team2);
+        driver3.setStatus(DriverStatus.ACTIVE);
+
+        // Evento 1: Ferrari gana con Leclerc (25 pts), Red Bull con Verstappen queda 2do (18 pts)
+        RaceEvent event1 = new RaceEvent();
+        event1.setId(UUID.randomUUID());
+        event1.setSeason(season);
+        event1.setDate(Instant.parse("2026-03-01T15:00:00Z"));
+        event1.setRoundNumber("R01");
+
+        RaceResult r1E1 = RaceResult.builder().id(UUID.randomUUID()).driver(driver3).position(1).points(25).raceEvent(event1).build();
+        RaceResult r2E1 = RaceResult.builder().id(UUID.randomUUID()).driver(driver1).position(2).points(18).raceEvent(event1).build();
+        event1.setRaceResults(List.of(r1E1, r2E1));
+
+        // Evento 2: Red Bull gana con Verstappen (25 pts), Ferrari con Leclerc queda 3ro (15 pts)
+        RaceEvent event2 = new RaceEvent();
+        event2.setId(UUID.randomUUID());
+        event2.setSeason(season);
+        event2.setDate(Instant.parse("2026-03-15T15:00:00Z"));
+        event2.setRoundNumber("R02");
+
+        RaceResult r1E2 = RaceResult.builder().id(UUID.randomUUID()).driver(driver1).position(1).points(25).raceEvent(event2).build();
+        RaceResult r2E2 = RaceResult.builder().id(UUID.randomUUID()).driver(driver3).position(3).points(15).raceEvent(event2).build();
+        event2.setRaceResults(List.of(r1E2, r2E2));
+
+        when(seasonRepository.findById(seasonId)).thenReturn(Optional.of(season));
+        when(raceEventRepository.findWithDetailsBySeasonId(seasonId)).thenReturn(List.of(event1, event2));
+
+        // Act
+        List<TeamStandingResponse> teamStandings = standingsService.getTeamStandings(seasonId, null);
+
+        // Assert:
+        // Red Bull: 18 + 25 = 43 pts (P1 actual, P2 en R01) -> gap: "-", prevPosition: 2
+        // Ferrari: 25 + 15 = 40 pts (P2 actual, P1 en R01) -> gap: "-3", prevPosition: 1
+        assertEquals(2, teamStandings.size());
+
+        TeamStandingResponse redBull = teamStandings.get(0);
+        assertEquals(team1Id, redBull.getTeamId());
+        assertEquals(43, redBull.getPoints());
+        assertEquals(1, redBull.getPosition());
+        assertEquals("-", redBull.getGap());
+        assertEquals(2, redBull.getPrevPosition());
+
+        TeamStandingResponse ferrari = teamStandings.get(1);
+        assertEquals(team2.getId(), ferrari.getTeamId());
+        assertEquals(40, ferrari.getPoints());
+        assertEquals(2, ferrari.getPosition());
+        assertEquals("-3", ferrari.getGap());
+        assertEquals(1, ferrari.getPrevPosition());
     }
 
     @Test

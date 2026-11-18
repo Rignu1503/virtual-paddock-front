@@ -24,4 +24,20 @@ public interface SeasonMapper {
     @Mapping(target = "raceEvents", ignore = true)
     @Mapping(target = "teams", ignore = true)
     void updateEntityFromDto(SeasonUpdate update, @MappingTarget Season season);
+
+    @AfterMapping
+    default void applyCategoryFallback(Season season, @MappingTarget SeasonResponse response) {
+        if ((response.getCategories() == null || response.getCategories().trim().isEmpty())
+                && season.getChampionship() != null) {
+            response.setCategories(season.getChampionship().getCategory());
+        }
+    }
+
+    @AfterMapping
+    default void applyBasicCategoryFallback(Season season, @MappingTarget SeasonBasicResponse response) {
+        if ((response.getCategories() == null || response.getCategories().trim().isEmpty())
+                && season.getChampionship() != null) {
+            response.setCategories(season.getChampionship().getCategory());
+        }
+    }
 }

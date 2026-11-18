@@ -1,5 +1,6 @@
 package com.virtual_paddock.backend.api.dtos.season;
 
+import com.virtual_paddock.backend.utils.enums.SeasonStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -14,4 +15,10 @@ public class SeasonRequest {
 
     @NotNull(message = "El ID del campeonato es obligatorio")
     private UUID championshipId;
+
+    private Boolean isDefault;
+
+    private String categories;
+
+    private SeasonStatus status;
 }

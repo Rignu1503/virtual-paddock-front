@@ -9,6 +9,7 @@ import com.virtual_paddock.backend.domain.entities.Sanction;
 import com.virtual_paddock.backend.domain.entities.Team;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -16,9 +17,66 @@ import java.util.stream.Collectors;
 public class StandingsCalculatorHelper {
 
     /**
-     * Calcula la clasificación de pilotos a partir de los eventos de carrera y sanciones.
+     * Calcula la clasificación de pilotos a partir de los eventos de carrera y sanciones,
+     * calculando automáticamente la columna gap y la posición previa (prevPosition).
      */
     public List<DriverStandingResponse> calculateDriverStandings(List<RaceEvent> raceEvents, String category) {
+        if (raceEvents == null || raceEvents.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<DriverStandingResponse> standings = computeDriverStandingsRaw(raceEvents, category);
+        if (standings.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 1. Calcular gap con respecto al líder
+        int leaderPoints = standings.get(0).getPoints() != null ? standings.get(0).getPoints() : 0;
+        for (int i = 0; i < standings.size(); i++) {
+            DriverStandingResponse ds = standings.get(i);
+            if (i == 0) {
+                ds.setGap("-");
+            } else {
+                int pts = ds.getPoints() != null ? ds.getPoints() : 0;
+                ds.setGap("-" + (leaderPoints - pts));
+            }
+        }
+
+        // 2. Calcular prevPosition excluyendo el último evento completado
+        List<RaceEvent> completedEvents = raceEvents.stream()
+                .filter(re -> re.getRaceResults() != null && !re.getRaceResults().isEmpty())
+                .sorted(Comparator.comparing(
+                        (RaceEvent re) -> re.getDate() != null ? re.getDate() : Instant.EPOCH
+                ).thenComparing(
+                        re -> re.getRoundNumber() != null ? re.getRoundNumber() : ""
+                ))
+                .toList();
+
+        if (completedEvents.size() >= 2) {
+            List<RaceEvent> priorEvents = completedEvents.subList(0, completedEvents.size() - 1);
+            List<DriverStandingResponse> priorStandings = computeDriverStandingsRaw(priorEvents, category);
+            Map<UUID, Integer> priorPosMap = new HashMap<>();
+            for (DriverStandingResponse ps : priorStandings) {
+                if (ps.getDriverId() != null) {
+                    priorPosMap.put(ps.getDriverId(), ps.getPosition());
+                }
+            }
+            for (DriverStandingResponse ds : standings) {
+                ds.setPrevPosition(priorPosMap.get(ds.getDriverId()));
+            }
+        } else {
+            for (DriverStandingResponse ds : standings) {
+                ds.setPrevPosition(null);
+            }
+        }
+
+        return standings;
+    }
+
+    /**
+     * Cálculo base sin gap ni prevPosition para permitir cálculos acumulados previos.
+     */
+    private List<DriverStandingResponse> computeDriverStandingsRaw(List<RaceEvent> raceEvents, String category) {
         if (raceEvents == null || raceEvents.isEmpty()) {
             return Collections.emptyList();
         }
@@ -114,9 +172,80 @@ public class StandingsCalculatorHelper {
     }
 
     /**
-     * Calcula la clasificación de equipos/escuderías a partir de la tabla de pilotos.
+     * Calcula la clasificación de equipos/escuderías a partir de la tabla de pilotos (sin contexto de eventos).
      */
     public List<TeamStandingResponse> calculateTeamStandings(List<DriverStandingResponse> driverStandings) {
+        return calculateTeamStandings(driverStandings, null, null);
+    }
+
+    /**
+     * Calcula la clasificación de constructores con cálculo de gap y prevPosition.
+     */
+    public List<TeamStandingResponse> calculateTeamStandings(
+            List<DriverStandingResponse> driverStandings,
+            List<RaceEvent> raceEvents,
+            String category
+    ) {
+        if (driverStandings == null || driverStandings.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<TeamStandingResponse> teamStandings = computeTeamStandingsRaw(driverStandings);
+        if (teamStandings.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 1. Calcular gap con respecto al líder de constructores
+        int leaderPoints = teamStandings.get(0).getPoints() != null ? teamStandings.get(0).getPoints() : 0;
+        for (int i = 0; i < teamStandings.size(); i++) {
+            TeamStandingResponse ts = teamStandings.get(i);
+            if (i == 0) {
+                ts.setGap("-");
+            } else {
+                int pts = ts.getPoints() != null ? ts.getPoints() : 0;
+                ts.setGap("-" + (leaderPoints - pts));
+            }
+        }
+
+        // 2. Calcular prevPosition excluyendo el último evento completado
+        if (raceEvents != null && !raceEvents.isEmpty()) {
+            List<RaceEvent> completedEvents = raceEvents.stream()
+                    .filter(re -> re.getRaceResults() != null && !re.getRaceResults().isEmpty())
+                    .sorted(Comparator.comparing(
+                            (RaceEvent re) -> re.getDate() != null ? re.getDate() : Instant.EPOCH
+                    ).thenComparing(
+                            re -> re.getRoundNumber() != null ? re.getRoundNumber() : ""
+                    ))
+                    .toList();
+
+            if (completedEvents.size() >= 2) {
+                List<RaceEvent> priorEvents = completedEvents.subList(0, completedEvents.size() - 1);
+                List<DriverStandingResponse> priorDriverStandings = computeDriverStandingsRaw(priorEvents, category);
+                List<TeamStandingResponse> priorTeamStandings = computeTeamStandingsRaw(priorDriverStandings);
+                Map<UUID, Integer> priorTeamPosMap = new HashMap<>();
+                for (TeamStandingResponse pts : priorTeamStandings) {
+                    if (pts.getTeamId() != null) {
+                        priorTeamPosMap.put(pts.getTeamId(), pts.getPosition());
+                    }
+                }
+                for (TeamStandingResponse ts : teamStandings) {
+                    ts.setPrevPosition(priorTeamPosMap.get(ts.getTeamId()));
+                }
+            } else {
+                for (TeamStandingResponse ts : teamStandings) {
+                    ts.setPrevPosition(null);
+                }
+            }
+        } else {
+            for (TeamStandingResponse ts : teamStandings) {
+                ts.setPrevPosition(null);
+            }
+        }
+
+        return teamStandings;
+    }
+
+    private List<TeamStandingResponse> computeTeamStandingsRaw(List<DriverStandingResponse> driverStandings) {
         if (driverStandings == null || driverStandings.isEmpty()) {
             return Collections.emptyList();
         }

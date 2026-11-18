@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -13,6 +14,7 @@ public interface TeamRepository extends JpaRepository<Team, UUID> {
     Page<Team> findByLeagueId(UUID leagueId, Pageable pageable);
     Page<Team> findByChampionshipId(UUID championshipId, Pageable pageable);
     Page<Team> findBySeasonId(UUID seasonId, Pageable pageable);
+    List<Team> findBySeasonId(UUID seasonId);
 
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query("UPDATE Team t SET t.season = null WHERE t.season.id = :seasonId")

@@ -1,5 +1,6 @@
 package com.virtual_paddock.backend.api.dtos.season;
 
+import com.virtual_paddock.backend.utils.enums.SeasonStatus;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
@@ -7,4 +8,10 @@ import lombok.*;
 public class SeasonUpdate {
     @Size(max = 100, message = "El nombre no puede exceder 100 caracteres")
     private String seasonName;
+
+    private Boolean isDefault;
+
+    private String categories;
+
+    private SeasonStatus status;
 }

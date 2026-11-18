@@ -3,6 +3,7 @@ package com.virtual_paddock.backend.api.controller;
 import com.virtual_paddock.backend.api.dtos.ApiResponse;
 import com.virtual_paddock.backend.api.dtos.PageResponse;
 import com.virtual_paddock.backend.api.dtos.season.*;
+import com.virtual_paddock.backend.api.dtos.team.TeamResponse;
 import com.virtual_paddock.backend.infrastructure.abstract_service.ISeasonService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -57,6 +59,19 @@ public class SeasonController {
             @Valid @RequestBody SeasonUpdate update) {
         SeasonResponse response = seasonService.update(id, update);
         return ResponseEntity.ok(ApiResponse.ok("Temporada actualizada exitosamente", response));
+    }
+
+    @PatchMapping("/{id}/set-default")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'LEAGUE_ADMIN')")
+    public ResponseEntity<ApiResponse<SeasonResponse>> setDefault(@PathVariable UUID id) {
+        SeasonResponse response = seasonService.setDefaultSeason(id);
+        return ResponseEntity.ok(ApiResponse.ok("Temporada marcada como predeterminada exitosamente", response));
+    }
+
+    @GetMapping("/{id}/teams")
+    public ResponseEntity<ApiResponse<List<TeamResponse>>> getTeamsBySeasonId(@PathVariable UUID id) {
+        List<TeamResponse> response = seasonService.getTeamsBySeasonId(id);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @DeleteMapping("/{id}")

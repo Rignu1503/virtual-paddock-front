@@ -11,6 +11,8 @@ import java.util.UUID;
 @Builder
 public class TeamStandingResponse {
     private Integer position;          // Posición en la tabla de constructores
+    private Integer prevPosition;      // Posición previa antes del último evento (null si <= 1 evento)
+    private String gap;                // Diferencia con el líder ("-" para P1, "-N" para P2+)
     private UUID teamId;
     private String teamName;
     private String carModel;

@@ -43,7 +43,9 @@ public class StandingsServiceImpl implements IStandingsService {
     @Override
     @Cacheable(value = "teamStandings", key = "#seasonId.toString() + '_' + (#category != null ? #category : 'ALL')")
     public List<TeamStandingResponse> getTeamStandings(UUID seasonId, String category) {
-        List<DriverStandingResponse> driverStandings = getDriverStandings(seasonId, category);
-        return standingsCalculatorHelper.calculateTeamStandings(driverStandings);
+        Season season = find(seasonId);
+        List<RaceEvent> raceEvents = raceEventRepository.findWithDetailsBySeasonId(season.getId());
+        List<DriverStandingResponse> driverStandings = standingsCalculatorHelper.calculateDriverStandings(raceEvents, category);
+        return standingsCalculatorHelper.calculateTeamStandings(driverStandings, raceEvents, category);
     }
 }

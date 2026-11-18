@@ -153,9 +153,12 @@ public class RaceResultServiceImpl implements IRaceResultService {
                         .driverId(r.getDriver().getId())
                         .category(r.getCategory())
                         .totalTime(r.getTotalTime())
+                        .bestLapTime(r.getBestLapTime())
                         .penaltiesSeconds(r.getPenaltiesSeconds() != null ? r.getPenaltiesSeconds() : 0)
                         .fastestLap(Boolean.TRUE.equals(r.getFastestLap()))
                         .finishOrder(r.getPosition())
+                        .lapsCompleted(r.getLapsCompleted())
+                        .status(r.getStatus())
                         .build()
         ).toList();
 

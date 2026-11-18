@@ -13,6 +13,7 @@ import com.virtual_paddock.backend.infrastructure.abstract_service.IRaceResultSe
 import com.virtual_paddock.backend.infrastructure.abstract_service.ISanctionService;
 import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.SanctionMapper;
+import com.virtual_paddock.backend.utils.enums.SanctionSeverity;
 import com.virtual_paddock.backend.utils.exeption.BadRequestException;
 import com.virtual_paddock.backend.utils.exeption.ErrorMessages;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,41 @@ public class SanctionServiceImpl implements ISanctionService {
                 new BadRequestException(ErrorMessages.IdNotFound("Sanction")));
     }
 
+    private boolean isDisqualification(Sanction sanction) {
+        if (sanction.getSeverity() == SanctionSeverity.DESCALIFICACION
+                || sanction.getSeverity() == SanctionSeverity.DISQUALIFICATION) {
+            return true;
+        }
+        if (sanction.getPenaltySeconds() != null && sanction.getPenaltySeconds() >= 999) {
+            return true;
+        }
+        if (sanction.getDetail() != null) {
+            String detailUpper = sanction.getDetail().toUpperCase();
+            if (detailUpper.contains("DSQ") || detailUpper.contains("DESCALIF") || detailUpper.contains("DISQUALIF")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void applySanctionToRaceResult(UUID raceEventId, UUID driverId, Sanction sanction) {
+        if (isDisqualification(sanction)) {
+            raceResultRepository.findByRaceEventIdAndDriverId(raceEventId, driverId).ifPresent(rr -> {
+                rr.setStatus("DQ");
+                rr.setPoints(0);
+                raceResultRepository.save(rr);
+                raceResultService.recalculateEventStandings(raceEventId);
+            });
+        } else if (sanction.getPenaltySeconds() != null && sanction.getPenaltySeconds() > 0) {
+            raceResultRepository.findByRaceEventIdAndDriverId(raceEventId, driverId).ifPresent(rr -> {
+                int currentPenalties = rr.getPenaltiesSeconds() != null ? rr.getPenaltiesSeconds() : 0;
+                rr.setPenaltiesSeconds(currentPenalties + sanction.getPenaltySeconds());
+                raceResultRepository.save(rr);
+                raceResultService.recalculateEventStandings(raceEventId);
+            });
+        }
+    }
+
     @Override
     @CacheEvict(value = {"driverStandings", "teamStandings"}, allEntries = true)
     public SanctionResponse create(SanctionRequest request) {
@@ -54,15 +90,7 @@ public class SanctionServiceImpl implements ISanctionService {
         sanction.setDriver(driver);
         Sanction saved = sanctionRepository.save(sanction);
 
-        // Si la sanción tiene segundos de penalización y está APLICADA, actualizar resultado y recalcular carrera
-        if (saved.getPenaltySeconds() != null && saved.getPenaltySeconds() > 0) {
-            raceResultRepository.findByRaceEventIdAndDriverId(raceEvent.getId(), driver.getId()).ifPresent(rr -> {
-                int currentPenalties = rr.getPenaltiesSeconds() != null ? rr.getPenaltiesSeconds() : 0;
-                rr.setPenaltiesSeconds(currentPenalties + saved.getPenaltySeconds());
-                raceResultRepository.save(rr);
-                raceResultService.recalculateEventStandings(raceEvent.getId());
-            });
-        }
+        applySanctionToRaceResult(raceEvent.getId(), driver.getId(), saved);
 
         return sanctionMapper.toResponse(saved);
     }
@@ -101,6 +129,9 @@ public class SanctionServiceImpl implements ISanctionService {
         Sanction sanction = find(id);
         sanctionMapper.updateEntityFromDto(update, sanction);
         Sanction updated = sanctionRepository.save(sanction);
+
+        applySanctionToRaceResult(updated.getRaceEvent().getId(), updated.getDriver().getId(), updated);
+
         return sanctionMapper.toResponse(updated);
     }
 
