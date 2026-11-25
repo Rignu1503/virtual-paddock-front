@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -31,6 +32,7 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
     private final LeagueRepository leagueRepository;
     private final ChampionshipRepository championshipRepository;
     private final TeamRepository teamRepository;
+    private final SeasonRepository seasonRepository;
     private final DriverMapper driverMapper;
 
     @Override
@@ -53,18 +55,63 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
             cleanGamertag = cleanGamertag.substring(1).trim();
         }
 
-        // Si hay campeonato, validar unicidad a nivel de campeonato (permite mismo piloto en otros torneos)
+        String cleanCarNumber = (request.getCarNumber() != null && !request.getCarNumber().isBlank())
+                ? request.getCarNumber().trim()
+                : null;
+        if (cleanCarNumber != null && cleanCarNumber.startsWith("#")) {
+            cleanCarNumber = cleanCarNumber.substring(1).trim();
+        }
+
+        Team preferredTeam = null;
+        if (request.getPreferredTeamId() != null) {
+            preferredTeam = teamRepository.findById(request.getPreferredTeamId())
+                    .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Team")));
+            int limit = (preferredTeam.getMaxDrivers() != null && preferredTeam.getMaxDrivers() > 0)
+                    ? preferredTeam.getMaxDrivers()
+                    : (preferredTeam.getChampionship() != null && preferredTeam.getChampionship().getMaxDriversPerTeam() != null
+                        ? preferredTeam.getChampionship().getMaxDriversPerTeam() : 2);
+            long currentCount = driverRepository.countByTeamId(preferredTeam.getId());
+            if (currentCount >= limit) {
+                throw new BadRequestException("El equipo '" + preferredTeam.getName() + "' ya está completo (" + currentCount + "/" + limit + " pilotos). Por favor selecciona otra escudería.");
+            }
+        }
+
+        Season season = null;
+        UUID effectiveSeasonId = request.getSeasonId();
+        if (effectiveSeasonId != null) {
+            season = seasonRepository.findById(effectiveSeasonId).orElse(null);
+        }
+        if (season == null && preferredTeam != null && preferredTeam.getSeason() != null) {
+            season = preferredTeam.getSeason();
+            effectiveSeasonId = season.getId();
+        }
+        if (season == null && championship != null) {
+            List<Season> seasons = seasonRepository.findByChampionshipIdOrderByIsDefaultDesc(championship.getId());
+            if (!seasons.isEmpty()) {
+                season = seasons.get(0);
+                effectiveSeasonId = season.getId();
+            }
+        }
+
+        // Si hay campeonato, validar unicidad a nivel de campeonato y temporada (permite mismo piloto en otras temporadas)
         if (championship != null) {
             UUID champId = championship.getId();
-            if (driverRepository.existsByNameInChampionship(champId, cleanName) ||
-                registrationRepository.existsActiveByNameInChampionship(champId, cleanName)) {
-                throw new BadRequestException("El nombre de piloto '" + cleanName + "' ya se encuentra registrado o con solicitud pendiente en este campeonato.");
+            if (driverRepository.existsByNameInChampionshipAndSeason(champId, effectiveSeasonId, cleanName) ||
+                registrationRepository.existsActiveByNameInChampionshipAndSeason(champId, effectiveSeasonId, cleanName)) {
+                throw new BadRequestException("El nombre de piloto '" + cleanName + "' ya se encuentra registrado o con solicitud pendiente en esta temporada.");
             }
 
             if (cleanGamertag != null && !cleanGamertag.isBlank()) {
-                if (driverRepository.existsByGamertagInChampionship(champId, cleanGamertag) ||
-                    registrationRepository.existsActiveByGamertagInChampionship(champId, cleanGamertag)) {
-                    throw new BadRequestException("El gamertag '" + cleanGamertag + "' ya se encuentra registrado o con solicitud pendiente en este campeonato.");
+                if (driverRepository.existsByGamertagInChampionshipAndSeason(champId, effectiveSeasonId, cleanGamertag) ||
+                    registrationRepository.existsActiveByGamertagInChampionshipAndSeason(champId, effectiveSeasonId, cleanGamertag)) {
+                    throw new BadRequestException("El gamertag '" + cleanGamertag + "' ya se encuentra registrado o con solicitud pendiente en esta temporada.");
+                }
+            }
+
+            if (cleanCarNumber != null && !cleanCarNumber.isBlank()) {
+                if (driverRepository.existsByCarNumberInChampionshipAndSeason(champId, effectiveSeasonId, cleanCarNumber) ||
+                    registrationRepository.existsActiveByCarNumberInChampionshipAndSeason(champId, effectiveSeasonId, cleanCarNumber)) {
+                    throw new BadRequestException("El dorsal #" + cleanCarNumber + " ya se encuentra registrado o con solicitud pendiente en esta temporada.");
                 }
             }
         } else {
@@ -80,42 +127,12 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
                     throw new BadRequestException("El gamertag '" + cleanGamertag + "' ya se encuentra registrado o con solicitud pendiente en esta liga.");
                 }
             }
-        }
 
-        String cleanCarNumber = (request.getCarNumber() != null && !request.getCarNumber().isBlank())
-                ? request.getCarNumber().trim()
-                : null;
-        if (cleanCarNumber != null && cleanCarNumber.startsWith("#")) {
-            cleanCarNumber = cleanCarNumber.substring(1).trim();
-        }
-
-        // Validacion de dorsal: igual que nombre/gamertag, scoped al campeonato si aplica
-        if (cleanCarNumber != null && !cleanCarNumber.isBlank()) {
-            if (championship != null) {
-                UUID champId = championship.getId();
-                if (driverRepository.existsByCarNumberInChampionship(champId, cleanCarNumber) ||
-                    registrationRepository.existsActiveByCarNumberInChampionship(champId, cleanCarNumber)) {
-                    throw new BadRequestException("El dorsal #" + cleanCarNumber + " ya se encuentra registrado o con solicitud pendiente en este campeonato.");
-                }
-            } else {
+            if (cleanCarNumber != null && !cleanCarNumber.isBlank()) {
                 if (driverRepository.existsByCarNumberInLeague(request.getLeagueId(), cleanCarNumber) ||
                     registrationRepository.existsActiveByCarNumberInLeague(request.getLeagueId(), cleanCarNumber)) {
                     throw new BadRequestException("El dorsal #" + cleanCarNumber + " ya se encuentra registrado o con solicitud pendiente en esta liga.");
                 }
-            }
-        }
-
-        Team preferredTeam = null;
-        if (request.getPreferredTeamId() != null) {
-            preferredTeam = teamRepository.findById(request.getPreferredTeamId())
-                    .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Team")));
-            int limit = (preferredTeam.getMaxDrivers() != null && preferredTeam.getMaxDrivers() > 0)
-                    ? preferredTeam.getMaxDrivers()
-                    : (preferredTeam.getChampionship() != null && preferredTeam.getChampionship().getMaxDriversPerTeam() != null
-                        ? preferredTeam.getChampionship().getMaxDriversPerTeam() : 2);
-            long currentCount = driverRepository.countByTeamId(preferredTeam.getId());
-            if (currentCount >= limit) {
-                throw new BadRequestException("El equipo '" + preferredTeam.getName() + "' ya está completo (" + currentCount + "/" + limit + " pilotos). Por favor selecciona otra escudería.");
             }
         }
 
@@ -144,6 +161,7 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
                 .status(DriverRegistrationStatus.PENDING)
                 .league(league)
                 .championship(championship)
+                .season(season)
                 .preferredTeam(preferredTeam)
                 .build();
 
@@ -246,17 +264,25 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
 
     @Override
     @Transactional(readOnly = true)
-    public DriverAvailabilityResponse checkAvailability(UUID leagueId, UUID championshipId, String name, String gamertag, String carNumber) {
+    public DriverAvailabilityResponse checkAvailability(UUID leagueId, UUID championshipId, UUID seasonId, String name, String gamertag, String carNumber) {
+        UUID effectiveSeasonId = seasonId;
+        if (effectiveSeasonId == null && championshipId != null) {
+            List<Season> seasons = seasonRepository.findByChampionshipIdOrderByIsDefaultDesc(championshipId);
+            if (!seasons.isEmpty()) {
+                effectiveSeasonId = seasons.get(0).getId();
+            }
+        }
+
         boolean nameAvail = true;
         String nameMsg = null;
 
         if (name != null && !name.isBlank()) {
             String cleanName = name.trim();
             if (championshipId != null) {
-                if (driverRepository.existsByNameInChampionship(championshipId, cleanName) ||
-                    registrationRepository.existsActiveByNameInChampionship(championshipId, cleanName)) {
+                if (driverRepository.existsByNameInChampionshipAndSeason(championshipId, effectiveSeasonId, cleanName) ||
+                    registrationRepository.existsActiveByNameInChampionshipAndSeason(championshipId, effectiveSeasonId, cleanName)) {
                     nameAvail = false;
-                    nameMsg = "El nombre '" + cleanName + "' ya esta registrado o con solicitud pendiente en este campeonato.";
+                    nameMsg = "El nombre '" + cleanName + "' ya esta registrado o con solicitud pendiente en esta temporada.";
                 }
             } else {
                 if (driverRepository.existsByNameInLeague(leagueId, cleanName) ||
@@ -277,10 +303,10 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
             }
             if (!cleanGamertag.isBlank()) {
                 if (championshipId != null) {
-                    if (driverRepository.existsByGamertagInChampionship(championshipId, cleanGamertag) ||
-                        registrationRepository.existsActiveByGamertagInChampionship(championshipId, cleanGamertag)) {
+                    if (driverRepository.existsByGamertagInChampionshipAndSeason(championshipId, effectiveSeasonId, cleanGamertag) ||
+                        registrationRepository.existsActiveByGamertagInChampionshipAndSeason(championshipId, effectiveSeasonId, cleanGamertag)) {
                         gamertagAvail = false;
-                        gamertagMsg = "El gamertag '" + cleanGamertag + "' ya esta registrado o con solicitud pendiente en este campeonato.";
+                        gamertagMsg = "El gamertag '" + cleanGamertag + "' ya esta registrado o con solicitud pendiente en esta temporada.";
                     }
                 } else {
                     if (driverRepository.existsByGamertagInLeague(leagueId, cleanGamertag) ||
@@ -302,10 +328,10 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
             }
             if (!cleanCarNumber.isBlank()) {
                 if (championshipId != null) {
-                    if (driverRepository.existsByCarNumberInChampionship(championshipId, cleanCarNumber) ||
-                        registrationRepository.existsActiveByCarNumberInChampionship(championshipId, cleanCarNumber)) {
+                    if (driverRepository.existsByCarNumberInChampionshipAndSeason(championshipId, effectiveSeasonId, cleanCarNumber) ||
+                        registrationRepository.existsActiveByCarNumberInChampionshipAndSeason(championshipId, effectiveSeasonId, cleanCarNumber)) {
                         carNumberAvail = false;
-                        carNumberMsg = "El dorsal #" + cleanCarNumber + " ya esta registrado o con solicitud pendiente en este campeonato.";
+                        carNumberMsg = "El dorsal #" + cleanCarNumber + " ya esta registrado o con solicitud pendiente en esta temporada.";
                     }
                 } else {
                     if (driverRepository.existsByCarNumberInLeague(leagueId, cleanCarNumber) ||
@@ -337,6 +363,16 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
     }
 
     private DriverRegistrationResponse toResponse(DriverRegistration reg) {
+        UUID seasonId = null;
+        String seasonName = null;
+        if (reg.getSeason() != null) {
+            seasonId = reg.getSeason().getId();
+            seasonName = reg.getSeason().getSeasonName();
+        } else if (reg.getPreferredTeam() != null && reg.getPreferredTeam().getSeason() != null) {
+            seasonId = reg.getPreferredTeam().getSeason().getId();
+            seasonName = reg.getPreferredTeam().getSeason().getSeasonName();
+        }
+
         return DriverRegistrationResponse.builder()
                 .id(reg.getId())
                 .name(reg.getName())
@@ -355,6 +391,8 @@ public class DriverRegistrationServiceImpl implements IDriverRegistrationService
                 .leagueName(reg.getLeague() != null ? reg.getLeague().getName() : null)
                 .championshipId(reg.getChampionship() != null ? reg.getChampionship().getId() : null)
                 .championshipName(reg.getChampionship() != null ? reg.getChampionship().getGameName() : null)
+                .seasonId(seasonId)
+                .seasonName(seasonName)
                 .preferredTeamId(reg.getPreferredTeam() != null ? reg.getPreferredTeam().getId() : null)
                 .preferredTeamName(reg.getPreferredTeam() != null ? reg.getPreferredTeam().getName() : null)
                 .assignedTeamId(reg.getAssignedTeam() != null ? reg.getAssignedTeam().getId() : null)

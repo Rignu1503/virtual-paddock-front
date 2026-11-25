@@ -55,5 +55,7 @@ public class DriverRegistrationRequest {
 
     private UUID championshipId;
 
+    private UUID seasonId;
+
     private UUID preferredTeamId;
 }

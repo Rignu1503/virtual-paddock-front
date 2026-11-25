@@ -72,6 +72,10 @@ public class DriverRegistration {
     private Championship championship;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "season_id")
+    private Season season;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "preferred_team_id")
     private Team preferredTeam;
 

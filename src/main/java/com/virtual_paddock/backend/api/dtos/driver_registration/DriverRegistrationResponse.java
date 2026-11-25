@@ -33,6 +33,9 @@ public class DriverRegistrationResponse {
     private UUID championshipId;
     private String championshipName;
 
+    private UUID seasonId;
+    private String seasonName;
+
     private UUID preferredTeamId;
     private String preferredTeamName;
 

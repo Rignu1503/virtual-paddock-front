@@ -36,7 +36,7 @@ public interface DriverRegistrationRepository extends JpaRepository<DriverRegist
     @Query(
         "SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM DriverRegistration r WHERE " +
         "r.league.id = :leagueId AND " +
-        "r.status IN ('PENDING', 'APPROVED') AND " +
+        "r.status = 'PENDING' AND " +
         "LOWER(TRIM(r.name)) = LOWER(TRIM(:name))"
     )
     boolean existsActiveByNameInLeague(
@@ -48,7 +48,7 @@ public interface DriverRegistrationRepository extends JpaRepository<DriverRegist
     @Query(
         "SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM DriverRegistration r WHERE " +
         "r.championship.id = :championshipId AND " +
-        "r.status IN ('PENDING', 'APPROVED') AND " +
+        "r.status = 'PENDING' AND " +
         "LOWER(TRIM(r.name)) = LOWER(TRIM(:name))"
     )
     boolean existsActiveByNameInChampionship(
@@ -58,8 +58,21 @@ public interface DriverRegistrationRepository extends JpaRepository<DriverRegist
 
     @Query(
         "SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM DriverRegistration r WHERE " +
+        "r.championship.id = :championshipId AND " +
+        "(:seasonId IS NULL OR (r.season IS NOT NULL AND r.season.id = :seasonId) OR (r.preferredTeam IS NOT NULL AND r.preferredTeam.season.id = :seasonId)) AND " +
+        "r.status = 'PENDING' AND " +
+        "LOWER(TRIM(r.name)) = LOWER(TRIM(:name))"
+    )
+    boolean existsActiveByNameInChampionshipAndSeason(
+        @Param("championshipId") UUID championshipId,
+        @Param("seasonId") UUID seasonId,
+        @Param("name") String name
+    );
+
+    @Query(
+        "SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM DriverRegistration r WHERE " +
         "r.league.id = :leagueId AND " +
-        "r.status IN ('PENDING', 'APPROVED') AND " +
+        "r.status = 'PENDING' AND " +
         "r.gamertag IS NOT NULL AND LOWER(TRIM(r.gamertag)) = LOWER(TRIM(:gamertag))"
     )
     boolean existsActiveByGamertagInLeague(
@@ -70,7 +83,7 @@ public interface DriverRegistrationRepository extends JpaRepository<DriverRegist
     @Query(
         "SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM DriverRegistration r WHERE " +
         "r.championship.id = :championshipId AND " +
-        "r.status IN ('PENDING', 'APPROVED') AND " +
+        "r.status = 'PENDING' AND " +
         "r.gamertag IS NOT NULL AND LOWER(TRIM(r.gamertag)) = LOWER(TRIM(:gamertag))"
     )
     boolean existsActiveByGamertagInChampionship(
@@ -80,8 +93,21 @@ public interface DriverRegistrationRepository extends JpaRepository<DriverRegist
 
     @Query(
         "SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM DriverRegistration r WHERE " +
+        "r.championship.id = :championshipId AND " +
+        "(:seasonId IS NULL OR (r.season IS NOT NULL AND r.season.id = :seasonId) OR (r.preferredTeam IS NOT NULL AND r.preferredTeam.season.id = :seasonId)) AND " +
+        "r.status = 'PENDING' AND " +
+        "r.gamertag IS NOT NULL AND LOWER(TRIM(r.gamertag)) = LOWER(TRIM(:gamertag))"
+    )
+    boolean existsActiveByGamertagInChampionshipAndSeason(
+        @Param("championshipId") UUID championshipId,
+        @Param("seasonId") UUID seasonId,
+        @Param("gamertag") String gamertag
+    );
+
+    @Query(
+        "SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM DriverRegistration r WHERE " +
         "r.league.id = :leagueId AND " +
-        "r.status IN ('PENDING', 'APPROVED') AND " +
+        "r.status = 'PENDING' AND " +
         "r.carNumber IS NOT NULL AND " +
         "(LOWER(TRIM(r.carNumber)) = LOWER(TRIM(:cleanCarNumber)) OR " +
         "LOWER(TRIM(r.carNumber)) = LOWER(CONCAT('#', TRIM(:cleanCarNumber))))"
@@ -94,13 +120,28 @@ public interface DriverRegistrationRepository extends JpaRepository<DriverRegist
     @Query(
         "SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM DriverRegistration r WHERE " +
         "r.championship.id = :championshipId AND " +
-        "r.status IN ('PENDING', 'APPROVED') AND " +
+        "r.status = 'PENDING' AND " +
         "r.carNumber IS NOT NULL AND " +
         "(LOWER(TRIM(r.carNumber)) = LOWER(TRIM(:cleanCarNumber)) OR " +
         "LOWER(TRIM(r.carNumber)) = LOWER(CONCAT('#', TRIM(:cleanCarNumber))))"
     )
     boolean existsActiveByCarNumberInChampionship(
         @Param("championshipId") UUID championshipId,
+        @Param("cleanCarNumber") String cleanCarNumber
+    );
+
+    @Query(
+        "SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM DriverRegistration r WHERE " +
+        "r.championship.id = :championshipId AND " +
+        "(:seasonId IS NULL OR (r.season IS NOT NULL AND r.season.id = :seasonId) OR (r.preferredTeam IS NOT NULL AND r.preferredTeam.season.id = :seasonId)) AND " +
+        "r.status = 'PENDING' AND " +
+        "r.carNumber IS NOT NULL AND " +
+        "(LOWER(TRIM(r.carNumber)) = LOWER(TRIM(:cleanCarNumber)) OR " +
+        "LOWER(TRIM(r.carNumber)) = LOWER(CONCAT('#', TRIM(:cleanCarNumber))))"
+    )
+    boolean existsActiveByCarNumberInChampionshipAndSeason(
+        @Param("championshipId") UUID championshipId,
+        @Param("seasonId") UUID seasonId,
         @Param("cleanCarNumber") String cleanCarNumber
     );
 }
