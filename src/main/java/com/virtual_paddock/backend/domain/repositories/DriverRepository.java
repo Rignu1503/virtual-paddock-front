@@ -21,11 +21,13 @@ public interface DriverRepository extends JpaRepository<Driver, UUID> {
     @Query(
         "SELECT d FROM Driver d WHERE (:leagueId IS NULL OR d.team.league.id = :leagueId OR d.team.championship.league.id = :leagueId) " +
         "AND (:championshipId IS NULL OR d.team.championship.id = :championshipId) " +
+        "AND (:seasonId IS NULL OR d.team.season.id = :seasonId) " +
         "AND (:teamId IS NULL OR d.team.id = :teamId)"
     )
     Page<Driver> findByFilter(
         @Param("leagueId") UUID leagueId,
         @Param("championshipId") UUID championshipId,
+        @Param("seasonId") UUID seasonId,
         @Param("teamId") UUID teamId,
         Pageable pageable
     );

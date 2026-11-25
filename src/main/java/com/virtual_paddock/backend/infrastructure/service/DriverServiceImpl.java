@@ -121,8 +121,8 @@ public class DriverServiceImpl implements IDriverService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<DriverBasicResponse> getFiltered(UUID leagueId, UUID championshipId, UUID teamId, int page, int size) {
-        Page<Driver> driverPage = driverRepository.findByFilter(leagueId, championshipId, teamId, PageRequest.of(page, size));
+    public PageResponse<DriverBasicResponse> getFiltered(UUID leagueId, UUID championshipId, UUID seasonId, UUID teamId, int page, int size) {
+        Page<Driver> driverPage = driverRepository.findByFilter(leagueId, championshipId, seasonId, teamId, PageRequest.of(page, size));
         return PageResponseHelper.fromPage(driverPage, driverMapper::toBasicResponse);
     }
 

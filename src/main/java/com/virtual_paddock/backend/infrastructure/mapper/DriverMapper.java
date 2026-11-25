@@ -11,6 +11,8 @@ public interface DriverMapper {
     @Mapping(target = "teamName", source = "team.name")
     @Mapping(target = "championshipId", source = "team.championship.id")
     @Mapping(target = "championshipName", source = "team.championship.gameName")
+    @Mapping(target = "seasonId", source = "team.season.id")
+    @Mapping(target = "seasonName", source = "team.season.seasonName")
     @Mapping(target = "leagueId", source = "team.league.id")
     DriverResponse toResponse(Driver driver);
 
@@ -18,6 +20,8 @@ public interface DriverMapper {
     @Mapping(target = "teamName", source = "team.name")
     @Mapping(target = "championshipId", source = "team.championship.id")
     @Mapping(target = "championshipName", source = "team.championship.gameName")
+    @Mapping(target = "seasonId", source = "team.season.id")
+    @Mapping(target = "seasonName", source = "team.season.seasonName")
     @Mapping(target = "leagueId", source = "team.league.id")
     DriverBasicResponse toBasicResponse(Driver driver);
 

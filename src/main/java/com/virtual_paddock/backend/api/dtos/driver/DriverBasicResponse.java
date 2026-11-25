@@ -16,6 +16,8 @@ public class DriverBasicResponse {
     private String teamName;
     private UUID championshipId;
     private String championshipName;
+    private UUID seasonId;
+    private String seasonName;
     private UUID leagueId;
     private String avatarUrl;
     private String twitchUrl;
