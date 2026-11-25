@@ -173,23 +173,61 @@ public class LiveTimingServiceImpl implements ILiveTimingService {
         }
         root.set("TrackInfo", trackInfo);
 
-        // 3. Construir ConnectedDrivers
+        // 3. Construir ConnectedDrivers y DisconnectedDrivers
         ObjectNode connectedDrivers = objectMapper.createObjectNode();
-        ObjectNode driversMap = objectMapper.createObjectNode();
-        ArrayNode guidsOrder = objectMapper.createArrayNode();
+        ObjectNode connectedDriversMap = objectMapper.createObjectNode();
+        ArrayNode connectedGuidsOrder = objectMapper.createArrayNode();
+
+        ObjectNode disconnectedDrivers = objectMapper.createObjectNode();
+        ObjectNode disconnectedDriversMap = objectMapper.createObjectNode();
+        ArrayNode disconnectedGuidsOrder = objectMapper.createArrayNode();
 
         JsonNode playersNode = raw.get("players");
         if (playersNode != null && playersNode.isArray()) {
-            int pos = 1;
+            java.util.List<ObjectNode> connectedList = new java.util.ArrayList<>();
+            java.util.Map<String, ObjectNode> disconnectedMap = new java.util.LinkedHashMap<>();
+
             for (JsonNode p : playersNode) {
                 if (p == null || !p.isObject()) continue;
-                String name = p.has("name") ? p.get("name").asText("Piloto") : "Piloto " + pos;
+                String name = p.has("name") ? p.get("name").asText("Piloto") : "Piloto";
                 String guid = p.has("guid") ? p.get("guid").asText(name) : (p.has("id") ? p.get("id").asText(name) : name);
-                String carModel = p.has("carModel") ? p.get("carModel").asText("") : (p.has("car") ? p.get("car").asText("") : (p.has("carName") ? p.get("carName").asText("") : ""));
-                String carName = p.has("carName") ? p.get("carName").asText(carModel) : carModel;
+
+                // Extracción de modelo de vehículo (AssettoHosting usa "model", otros usan "carModel" o "car")
+                String carModel = "";
+                if (p.has("model") && !p.get("model").asText().isBlank()) {
+                    carModel = p.get("model").asText().trim();
+                } else if (p.has("carModel") && !p.get("carModel").asText().isBlank()) {
+                    carModel = p.get("carModel").asText().trim();
+                } else if (p.has("car") && !p.get("car").asText().isBlank()) {
+                    carModel = p.get("car").asText().trim();
+                }
+
+                // Extracción de nombre legible de vehículo (AssettoHosting usa "modelName", otros "carName")
+                String carName = "";
+                if (p.has("modelName") && !p.get("modelName").asText().isBlank()) {
+                    carName = p.get("modelName").asText().trim();
+                } else if (p.has("carName") && !p.get("carName").asText().isBlank()) {
+                    carName = p.get("carName").asText().trim();
+                } else if (p.has("skinName") && !p.get("skinName").asText().isBlank()) {
+                    carName = p.get("skinName").asText().trim();
+                }
+                if (carName.isBlank()) {
+                    carName = carModel.isBlank() ? "Vehículo Oficial" : carModel;
+                }
+
+                // Detección de piloto desconectado / stint histórico
+                boolean isDisconnected = false;
+                if (p.has("status") && "gone".equalsIgnoreCase(p.get("status").asText())) {
+                    isDisconnected = true;
+                }
+                if (p.has("loaded") && !p.get("loaded").asBoolean()) {
+                    isDisconnected = true;
+                }
+                if (p.has("id") && p.get("id").asInt() < 0) {
+                    isDisconnected = true;
+                }
 
                 ObjectNode dNode = objectMapper.createObjectNode();
-                dNode.put("Position", p.has("pos") ? p.get("pos").asInt(pos) : pos);
                 dNode.put("Split", p.has("gap") ? p.get("gap").asText("-") : "-");
 
                 ObjectNode carInfo = objectMapper.createObjectNode();
@@ -210,18 +248,87 @@ public class LiveTimingServiceImpl implements ILiveTimingService {
                 carData.put("NumLaps", p.has("laps") ? p.get("laps").asInt(0) : 0);
                 carData.put("TopSpeedBestLap", p.has("speed") ? p.get("speed").asDouble(0.0) : 0.0);
 
-                cars.set(carModel.isBlank() ? "default" : carModel, carData);
+                if (!carModel.isBlank()) {
+                    cars.set(carModel, carData);
+                }
+                cars.set("default", carData);
                 dNode.set("Cars", cars);
 
-                driversMap.set(guid, dNode);
-                guidsOrder.add(guid);
-                pos++;
+                if (!isDisconnected) {
+                    dNode.put("Position", p.has("pos") ? p.get("pos").asInt(connectedList.size() + 1) : (connectedList.size() + 1));
+                    connectedList.add(dNode);
+                } else {
+                    String cleanKey = name.trim().toLowerCase();
+                    if (!disconnectedMap.containsKey(cleanKey)) {
+                        disconnectedMap.put(cleanKey, dNode);
+                    } else {
+                        ObjectNode existing = disconnectedMap.get(cleanKey);
+                        long existingBestLap = existing.path("Cars").path("default").path("BestLap").asLong(0L);
+                        int existingLaps = existing.path("Cars").path("default").path("NumLaps").asInt(0);
+                        int newLaps = carData.path("NumLaps").asInt(0);
+
+                        if (bestLapNs > 0 && (existingBestLap == 0L || bestLapNs < existingBestLap)) {
+                            carData.put("NumLaps", existingLaps + newLaps);
+                            disconnectedMap.put(cleanKey, dNode);
+                        } else {
+                            JsonNode existingDefault = existing.path("Cars").path("default");
+                            if (existingDefault.isObject()) {
+                                ((ObjectNode) existingDefault).put("NumLaps", existingLaps + newLaps);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 1. Llenar ConnectedDrivers
+            int connPos = 1;
+            for (ObjectNode node : connectedList) {
+                String guid = node.path("CarInfo").path("DriverGUID").asText("PILOT_" + connPos);
+                node.put("Position", connPos);
+                connectedDriversMap.set(guid, node);
+                connectedGuidsOrder.add(guid);
+                connPos++;
+            }
+
+            // 2. Ordenar y llenar DisconnectedDrivers por mejor vuelta
+            java.util.List<ObjectNode> discList = new java.util.ArrayList<>(disconnectedMap.values());
+            discList.sort((a, b) -> {
+                long lapA = a.path("Cars").path("default").path("BestLap").asLong(0L);
+                long lapB = b.path("Cars").path("default").path("BestLap").asLong(0L);
+                if (lapA > 0 && lapB > 0) return Long.compare(lapA, lapB);
+                if (lapA > 0) return -1;
+                if (lapB > 0) return 1;
+                return Integer.compare(b.path("Cars").path("default").path("NumLaps").asInt(0),
+                        a.path("Cars").path("default").path("NumLaps").asInt(0));
+            });
+
+            long leaderLapNs = discList.isEmpty() ? 0L : discList.get(0).path("Cars").path("default").path("BestLap").asLong(0L);
+            int discPos = 1;
+            for (ObjectNode node : discList) {
+                String guid = node.path("CarInfo").path("DriverGUID").asText("DISC_" + discPos);
+                node.put("Position", discPos);
+
+                long bestLap = node.path("Cars").path("default").path("BestLap").asLong(0L);
+                if (discPos == 1 || leaderLapNs == 0L || bestLap == 0L) {
+                    node.put("Split", "--");
+                } else {
+                    double gapSec = (bestLap - leaderLapNs) / 1_000_000_000.0;
+                    node.put("Split", String.format(java.util.Locale.US, "+%.3f", gapSec));
+                }
+
+                disconnectedDriversMap.set(guid, node);
+                disconnectedGuidsOrder.add(guid);
+                discPos++;
             }
         }
 
-        connectedDrivers.set("Drivers", driversMap);
-        connectedDrivers.set("GUIDsInPositionalOrder", guidsOrder);
+        connectedDrivers.set("Drivers", connectedDriversMap);
+        connectedDrivers.set("GUIDsInPositionalOrder", connectedGuidsOrder);
         root.set("ConnectedDrivers", connectedDrivers);
+
+        disconnectedDrivers.set("Drivers", disconnectedDriversMap);
+        disconnectedDrivers.set("GUIDsInPositionalOrder", disconnectedGuidsOrder);
+        root.set("DisconnectedDrivers", disconnectedDrivers);
 
         return root;
     }
