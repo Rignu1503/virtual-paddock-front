@@ -30,6 +30,18 @@ public class TeamServiceImpl implements ITeamService {
     private final com.virtual_paddock.backend.domain.repositories.SeasonRepository seasonRepository;
     private final com.virtual_paddock.backend.domain.repositories.DriverRepository driverRepository;
     private final TeamMapper teamMapper;
+    private final com.virtual_paddock.backend.infrastructure.security.LeagueSecurityValidator leagueSecurityValidator;
+
+    private void verifyOwnership(Team team) {
+        if (team == null || leagueSecurityValidator == null) return;
+        League league = team.getLeague();
+        if (league == null && team.getChampionship() != null) {
+            league = team.getChampionship().getLeague();
+        }
+        if (league != null) {
+            leagueSecurityValidator.verifyOwnershipOrSuperadmin(league);
+        }
+    }
 
     private Team find(UUID id) {
         return this.teamRepository.findById(id).orElseThrow(() ->
@@ -92,6 +104,7 @@ public class TeamServiceImpl implements ITeamService {
         if (team.getLeague() == null && team.getChampionship() == null) {
             throw new BadRequestException("Debe especificar una liga o un campeonato para el equipo");
         }
+        verifyOwnership(team);
 
         if (request.getMaxDrivers() != null && request.getMaxDrivers() > 0) {
             team.setMaxDrivers(request.getMaxDrivers());
@@ -150,6 +163,7 @@ public class TeamServiceImpl implements ITeamService {
     @Override
     public TeamResponse update(UUID id, TeamUpdate update) {
         Team team = find(id);
+        verifyOwnership(team);
         teamMapper.updateEntityFromDto(update, team);
 
         if (update.getMaxDrivers() != null && update.getMaxDrivers() > 0) {
@@ -186,6 +200,7 @@ public class TeamServiceImpl implements ITeamService {
     @Override
     public void delete(UUID id) {
         Team team = find(id);
+        verifyOwnership(team);
         teamRepository.delete(team);
     }
 }

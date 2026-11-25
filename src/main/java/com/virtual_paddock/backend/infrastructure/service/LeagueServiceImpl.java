@@ -29,6 +29,7 @@ public class LeagueServiceImpl implements ILeagueService {
     private final LeagueRepository leagueRepository;
     private final com.virtual_paddock.backend.domain.repositories.UserRepository userRepository;
     private final LeagueMapper leagueMapper;
+    private final com.virtual_paddock.backend.infrastructure.security.LeagueSecurityValidator leagueSecurityValidator;
 
     private League find(UUID id) {
         return this.leagueRepository.findById(id).orElseThrow(() ->
@@ -56,37 +57,45 @@ public class LeagueServiceImpl implements ILeagueService {
 
     @Override
     @Transactional
-    @Cacheable(value = "leagues", key = "#id.toString()")
     public LeagueResponse getById(UUID id) {
         League league = find(id);
         if (league.getInviteCode() == null || league.getInviteCode().trim().isEmpty()) {
             league.setInviteCode(generateUniqueInviteCode());
             league = leagueRepository.save(league);
         }
-        return leagueMapper.toResponse(league);
+        LeagueResponse resp = leagueMapper.toResponse(league);
+        User currentUser = leagueSecurityValidator.getCurrentUser();
+        if (!leagueSecurityValidator.canManageLeague(league, currentUser)) {
+            resp.setInviteCode(null);
+        }
+        return resp;
     }
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "leaguesBySlug", key = "#slugUrl")
     public LeagueResponse getBySlugUrl(String slugUrl) {
         League league = leagueRepository.findBySlugUrl(slugUrl)
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.NotFound(slugUrl)));
-        return leagueMapper.toResponse(league);
+        LeagueResponse resp = leagueMapper.toResponse(league);
+        User currentUser = leagueSecurityValidator.getCurrentUser();
+        if (!leagueSecurityValidator.canManageLeague(league, currentUser)) {
+            resp.setInviteCode(null);
+        }
+        return resp;
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<LeagueBasicResponse> getAll(int page, int size) {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
+        User currentUser = leagueSecurityValidator.getCurrentUser();
         Page<League> leaguePage;
 
-        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof User currentUser) {
+        if (currentUser != null) {
             if (currentUser.getRole() == com.virtual_paddock.backend.utils.enums.Role.SUPERADMIN) {
                 // El Superadmin tiene visibilidad global de todas las ligas
                 leaguePage = leagueRepository.findAll(PageRequest.of(page, size));
             } else {
-                // El organizador (LEAGUE_ADMIN) ve sus ligas creadas y aquellas donde es co-administrador
+                // El organizador (LEAGUE_ADMIN) ve ÚNICAMENTE sus ligas creadas y aquellas donde es co-administrador
                 leaguePage = leagueRepository.findByAdministeredUser(currentUser.getId(), PageRequest.of(page, size));
             }
         } else {
@@ -94,14 +103,20 @@ public class LeagueServiceImpl implements ILeagueService {
             leaguePage = leagueRepository.findAll(PageRequest.of(page, size));
         }
 
-        return PageResponseHelper.fromPage(leaguePage, leagueMapper::toBasicResponse);
+        return PageResponseHelper.fromPage(leaguePage, league -> {
+            LeagueBasicResponse resp = leagueMapper.toBasicResponse(league);
+            if (!leagueSecurityValidator.canManageLeague(league, currentUser)) {
+                resp.setInviteCode(null);
+            }
+            return resp;
+        });
     }
 
     @Override
     @CacheEvict(value = {"leagues", "leaguesBySlug"}, allEntries = true)
     public LeagueResponse update(UUID id, LeagueUpdate update) {
         League league = find(id);
-        verifyOwnershipOrSuperadmin(league);
+        leagueSecurityValidator.verifyOwnershipOrSuperadmin(league);
         leagueMapper.updateEntityFromDto(update, league);
         League updated = leagueRepository.save(league);
         return leagueMapper.toResponse(updated);
@@ -111,7 +126,7 @@ public class LeagueServiceImpl implements ILeagueService {
     @CacheEvict(value = {"leagues", "leaguesBySlug"}, allEntries = true)
     public void delete(UUID id) {
         League league = find(id);
-        verifyOwnershipOrSuperadmin(league);
+        leagueSecurityValidator.verifyOwnershipOrSuperadmin(league);
         leagueRepository.delete(league);
     }
 
@@ -119,7 +134,7 @@ public class LeagueServiceImpl implements ILeagueService {
     @CacheEvict(value = {"leagues", "leaguesBySlug"}, allEntries = true)
     public String regenerateInviteCode(UUID id) {
         League league = find(id);
-        verifyOwnershipOrSuperadmin(league);
+        leagueSecurityValidator.verifyOwnershipOrSuperadmin(league);
         String newCode = generateUniqueInviteCode();
         league.setInviteCode(newCode);
         leagueRepository.save(league);
@@ -139,22 +154,5 @@ public class LeagueServiceImpl implements ILeagueService {
             code = sb.toString();
         } while (leagueRepository.existsByInviteCode(code));
         return code;
-    }
-
-    private void verifyOwnershipOrSuperadmin(League league) {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof User currentUser) {
-            if (currentUser.getRole() == com.virtual_paddock.backend.utils.enums.Role.SUPERADMIN) {
-                return; // Superadmin puede gestionar cualquier liga
-            }
-            if (league.getUser() != null && league.getUser().getId().equals(currentUser.getId())) {
-                return; // El organizador dueño puede gestionar su liga
-            }
-            if (league.getAdministrators() != null &&
-                league.getAdministrators().stream().anyMatch(admin -> admin.getId().equals(currentUser.getId()))) {
-                return; // Co-administrador puede gestionar la liga
-            }
-        }
-        throw new BadRequestException("Acceso denegado: No tienes permisos para gestionar esta liga.");
     }
 }

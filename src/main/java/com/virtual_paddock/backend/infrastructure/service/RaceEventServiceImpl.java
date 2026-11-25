@@ -9,6 +9,7 @@ import com.virtual_paddock.backend.domain.repositories.SeasonRepository;
 import com.virtual_paddock.backend.infrastructure.abstract_service.IRaceEventService;
 import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.RaceEventMapper;
+import com.virtual_paddock.backend.infrastructure.security.LeagueSecurityValidator;
 import com.virtual_paddock.backend.utils.exeption.BadRequestException;
 import com.virtual_paddock.backend.utils.exeption.ErrorMessages;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,21 @@ public class RaceEventServiceImpl implements IRaceEventService {
     private final RaceEventRepository raceEventRepository;
     private final SeasonRepository seasonRepository;
     private final RaceEventMapper raceEventMapper;
+    private final LeagueSecurityValidator leagueSecurityValidator;
+
+    private void verifyOwnership(Season season) {
+        if (season != null && season.getChampionship() != null
+                && season.getChampionship().getLeague() != null
+                && leagueSecurityValidator != null) {
+            leagueSecurityValidator.verifyOwnershipOrSuperadmin(season.getChampionship().getLeague());
+        }
+    }
+
+    private void verifyOwnership(RaceEvent raceEvent) {
+        if (raceEvent != null && raceEvent.getSeason() != null) {
+            verifyOwnership(raceEvent.getSeason());
+        }
+    }
 
     private RaceEvent find(UUID id) {
         return this.raceEventRepository.findById(id).orElseThrow(() ->
@@ -37,6 +53,7 @@ public class RaceEventServiceImpl implements IRaceEventService {
     public RaceEventResponse create(RaceEventRequest request) {
         Season season = seasonRepository.findById(request.getSeasonId())
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Season")));
+        verifyOwnership(season);
         RaceEvent raceEvent = raceEventMapper.toEntity(request);
         raceEvent.setSeason(season);
         RaceEvent saved = raceEventRepository.save(raceEvent);
@@ -67,6 +84,7 @@ public class RaceEventServiceImpl implements IRaceEventService {
     @Override
     public RaceEventResponse update(UUID id, RaceEventUpdate update) {
         RaceEvent raceEvent = find(id);
+        verifyOwnership(raceEvent);
         raceEventMapper.updateEntityFromDto(update, raceEvent);
         RaceEvent updated = raceEventRepository.save(raceEvent);
         return raceEventMapper.toResponse(updated);
@@ -75,6 +93,7 @@ public class RaceEventServiceImpl implements IRaceEventService {
     @Override
     public void delete(UUID id) {
         RaceEvent raceEvent = find(id);
+        verifyOwnership(raceEvent);
         raceEventRepository.delete(raceEvent);
     }
 }

@@ -55,6 +55,9 @@ class SeasonServiceImplTest {
     @Mock
     private TeamMapper teamMapper;
 
+    @Mock
+    private com.virtual_paddock.backend.infrastructure.security.LeagueSecurityValidator leagueSecurityValidator;
+
     @InjectMocks
     private SeasonServiceImpl seasonService;
 

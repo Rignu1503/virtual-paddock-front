@@ -11,6 +11,7 @@ import com.virtual_paddock.backend.domain.repositories.RaceResultRepository;
 import com.virtual_paddock.backend.infrastructure.abstract_service.IRaceResultService;
 import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.RaceResultMapper;
+import com.virtual_paddock.backend.infrastructure.security.LeagueSecurityValidator;
 import com.virtual_paddock.backend.utils.exeption.BadRequestException;
 import com.virtual_paddock.backend.utils.exeption.ErrorMessages;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,15 @@ public class RaceResultServiceImpl implements IRaceResultService {
     private final DriverRepository driverRepository;
     private final RaceResultMapper raceResultMapper;
     private final RaceCalculationService raceCalculationService;
+    private final LeagueSecurityValidator leagueSecurityValidator;
+
+    private void verifyOwnership(RaceEvent raceEvent) {
+        if (raceEvent != null && raceEvent.getSeason() != null
+                && raceEvent.getSeason().getChampionship() != null
+                && raceEvent.getSeason().getChampionship().getLeague() != null) {
+            leagueSecurityValidator.verifyOwnershipOrSuperadmin(raceEvent.getSeason().getChampionship().getLeague());
+        }
+    }
 
     private RaceResult find(UUID id) {
         return this.raceResultRepository.findById(id).orElseThrow(() ->
@@ -47,6 +57,7 @@ public class RaceResultServiceImpl implements IRaceResultService {
     public List<RaceResultResponse> processBatchResults(UUID raceEventId, RaceResultBulkRequest request) {
         RaceEvent raceEvent = raceEventRepository.findById(raceEventId)
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("RaceEvent")));
+        verifyOwnership(raceEvent);
 
         // Validar que todos los driverId sean válidos
         for (RaceResultBulkItemRequest item : request.getResults()) {
@@ -174,6 +185,7 @@ public class RaceResultServiceImpl implements IRaceResultService {
     public RaceResultResponse create(RaceResultRequest request) {
         RaceEvent raceEvent = raceEventRepository.findById(request.getRaceEventId())
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("RaceEvent")));
+        verifyOwnership(raceEvent);
         Driver driver = driverRepository.findById(request.getDriverId())
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Driver")));
 
@@ -210,6 +222,7 @@ public class RaceResultServiceImpl implements IRaceResultService {
     @CacheEvict(value = {"driverStandings", "teamStandings"}, allEntries = true)
     public RaceResultResponse update(UUID id, RaceResultUpdate update) {
         RaceResult raceResult = find(id);
+        verifyOwnership(raceResult.getRaceEvent());
         raceResultMapper.updateEntityFromDto(update, raceResult);
         RaceResult updated = raceResultRepository.save(raceResult);
         return raceResultMapper.toResponse(updated);
@@ -219,6 +232,7 @@ public class RaceResultServiceImpl implements IRaceResultService {
     @CacheEvict(value = {"driverStandings", "teamStandings"}, allEntries = true)
     public void delete(UUID id) {
         RaceResult raceResult = find(id);
+        verifyOwnership(raceResult.getRaceEvent());
         raceResultRepository.delete(raceResult);
     }
 }

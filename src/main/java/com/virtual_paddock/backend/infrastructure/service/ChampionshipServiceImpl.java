@@ -33,6 +33,13 @@ public class ChampionshipServiceImpl implements IChampionshipService {
     private final SeasonRepository seasonRepository;
     private final RaceEventRepository raceEventRepository;
     private final ChampionshipMapper championshipMapper;
+    private final com.virtual_paddock.backend.infrastructure.security.LeagueSecurityValidator leagueSecurityValidator;
+
+    private void verifyOwnership(League league) {
+        if (league != null && leagueSecurityValidator != null) {
+            leagueSecurityValidator.verifyOwnershipOrSuperadmin(league);
+        }
+    }
 
     private Championship find(UUID id) {
         return this.championshipRepository.findById(id).orElseThrow(() ->
@@ -43,6 +50,7 @@ public class ChampionshipServiceImpl implements IChampionshipService {
     public ChampionshipResponse create(ChampionshipRequest request) {
         League league = leagueRepository.findById(request.getLeagueId())
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("League")));
+        verifyOwnership(league);
         Championship championship = championshipMapper.toEntity(request);
         championship.setLeague(league);
 
@@ -83,6 +91,7 @@ public class ChampionshipServiceImpl implements IChampionshipService {
     @Override
     public ChampionshipResponse update(UUID id, ChampionshipUpdate update) {
         Championship championship = find(id);
+        verifyOwnership(championship.getLeague());
         championshipMapper.updateEntityFromDto(update, championship);
 
         if (update.getPointsSystemId() != null) {
@@ -101,6 +110,7 @@ public class ChampionshipServiceImpl implements IChampionshipService {
     @Override
     public void delete(UUID id) {
         Championship championship = find(id);
+        verifyOwnership(championship.getLeague());
 
         // 1. Desvincular equipos asociados al campeonato y a sus temporadas
         teamRepository.clearChampionshipReference(id);

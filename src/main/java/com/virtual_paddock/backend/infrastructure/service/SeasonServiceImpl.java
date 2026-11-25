@@ -16,6 +16,7 @@ import com.virtual_paddock.backend.infrastructure.abstract_service.ISeasonServic
 import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.SeasonMapper;
 import com.virtual_paddock.backend.infrastructure.mapper.TeamMapper;
+import com.virtual_paddock.backend.infrastructure.security.LeagueSecurityValidator;
 import com.virtual_paddock.backend.utils.enums.SeasonStatus;
 import com.virtual_paddock.backend.utils.exeption.BadRequestException;
 import com.virtual_paddock.backend.utils.exeption.ErrorMessages;
@@ -40,6 +41,19 @@ public class SeasonServiceImpl implements ISeasonService {
     private final DriverRepository driverRepository;
     private final SeasonMapper seasonMapper;
     private final TeamMapper teamMapper;
+    private final LeagueSecurityValidator leagueSecurityValidator;
+
+    private void verifyOwnership(Championship championship) {
+        if (championship != null && championship.getLeague() != null && leagueSecurityValidator != null) {
+            leagueSecurityValidator.verifyOwnershipOrSuperadmin(championship.getLeague());
+        }
+    }
+
+    private void verifyOwnership(Season season) {
+        if (season != null && season.getChampionship() != null) {
+            verifyOwnership(season.getChampionship());
+        }
+    }
 
     private Season find(UUID id) {
         return this.seasonRepository.findById(id).orElseThrow(() ->
@@ -63,6 +77,7 @@ public class SeasonServiceImpl implements ISeasonService {
     public SeasonResponse create(SeasonRequest request) {
         Championship championship = championshipRepository.findById(request.getChampionshipId())
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Championship")));
+        verifyOwnership(championship);
         Season season = seasonMapper.toEntity(request);
         season.setChampionship(championship);
 
@@ -109,6 +124,7 @@ public class SeasonServiceImpl implements ISeasonService {
     @Override
     public SeasonResponse update(UUID id, SeasonUpdate update) {
         Season season = find(id);
+        verifyOwnership(season);
         seasonMapper.updateEntityFromDto(update, season);
 
         if (update.getCategories() != null) {
@@ -133,6 +149,7 @@ public class SeasonServiceImpl implements ISeasonService {
     @Override
     public SeasonResponse setDefaultSeason(UUID seasonId) {
         Season season = find(seasonId);
+        verifyOwnership(season);
         UUID championshipId = season.getChampionship().getId();
         seasonRepository.clearDefaultExcept(championshipId, seasonId);
         season.setIsDefault(true);
@@ -151,6 +168,7 @@ public class SeasonServiceImpl implements ISeasonService {
     @Override
     public void delete(UUID id) {
         Season season = find(id);
+        verifyOwnership(season);
 
         // 1. Desvincular equipos de esta temporada para evitar violacion de clave foranea
         teamRepository.clearSeasonReference(id);

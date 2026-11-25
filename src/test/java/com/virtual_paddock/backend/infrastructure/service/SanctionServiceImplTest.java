@@ -51,6 +51,9 @@ class SanctionServiceImplTest {
     @Mock
     private IRaceResultService raceResultService;
 
+    @Mock
+    private com.virtual_paddock.backend.infrastructure.security.LeagueSecurityValidator leagueSecurityValidator;
+
     @InjectMocks
     private SanctionServiceImpl sanctionService;
 

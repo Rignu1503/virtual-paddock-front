@@ -13,6 +13,7 @@ import com.virtual_paddock.backend.infrastructure.abstract_service.IRaceResultSe
 import com.virtual_paddock.backend.infrastructure.abstract_service.ISanctionService;
 import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.SanctionMapper;
+import com.virtual_paddock.backend.infrastructure.security.LeagueSecurityValidator;
 import com.virtual_paddock.backend.utils.enums.SanctionSeverity;
 import com.virtual_paddock.backend.utils.exeption.BadRequestException;
 import com.virtual_paddock.backend.utils.exeption.ErrorMessages;
@@ -36,6 +37,16 @@ public class SanctionServiceImpl implements ISanctionService {
     private final RaceResultRepository raceResultRepository;
     private final SanctionMapper sanctionMapper;
     private final IRaceResultService raceResultService;
+    private final LeagueSecurityValidator leagueSecurityValidator;
+
+    private void verifyOwnership(RaceEvent raceEvent) {
+        if (raceEvent != null && raceEvent.getSeason() != null
+                && raceEvent.getSeason().getChampionship() != null
+                && raceEvent.getSeason().getChampionship().getLeague() != null
+                && leagueSecurityValidator != null) {
+            leagueSecurityValidator.verifyOwnershipOrSuperadmin(raceEvent.getSeason().getChampionship().getLeague());
+        }
+    }
 
     private Sanction find(UUID id) {
         return this.sanctionRepository.findById(id).orElseThrow(() ->
@@ -82,6 +93,7 @@ public class SanctionServiceImpl implements ISanctionService {
     public SanctionResponse create(SanctionRequest request) {
         RaceEvent raceEvent = raceEventRepository.findById(request.getRaceEventId())
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("RaceEvent")));
+        verifyOwnership(raceEvent);
         Driver driver = driverRepository.findById(request.getDriverId())
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Driver")));
 
@@ -127,6 +139,7 @@ public class SanctionServiceImpl implements ISanctionService {
     @CacheEvict(value = {"driverStandings", "teamStandings"}, allEntries = true)
     public SanctionResponse update(UUID id, SanctionUpdate update) {
         Sanction sanction = find(id);
+        verifyOwnership(sanction.getRaceEvent());
         sanctionMapper.updateEntityFromDto(update, sanction);
         Sanction updated = sanctionRepository.save(sanction);
 
@@ -139,6 +152,7 @@ public class SanctionServiceImpl implements ISanctionService {
     @CacheEvict(value = {"driverStandings", "teamStandings"}, allEntries = true)
     public void delete(UUID id) {
         Sanction sanction = find(id);
+        verifyOwnership(sanction.getRaceEvent());
         sanctionRepository.delete(sanction);
     }
 }

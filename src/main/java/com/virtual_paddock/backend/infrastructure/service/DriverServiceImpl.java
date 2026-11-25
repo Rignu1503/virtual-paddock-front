@@ -4,11 +4,13 @@ import com.virtual_paddock.backend.api.dtos.PageResponse;
 import com.virtual_paddock.backend.api.dtos.driver.*;
 import com.virtual_paddock.backend.domain.entities.Driver;
 import com.virtual_paddock.backend.domain.entities.Team;
+import com.virtual_paddock.backend.domain.entities.League;
 import com.virtual_paddock.backend.domain.repositories.DriverRepository;
 import com.virtual_paddock.backend.domain.repositories.TeamRepository;
 import com.virtual_paddock.backend.infrastructure.abstract_service.IDriverService;
 import com.virtual_paddock.backend.infrastructure.helper.PageResponseHelper;
 import com.virtual_paddock.backend.infrastructure.mapper.DriverMapper;
+import com.virtual_paddock.backend.infrastructure.security.LeagueSecurityValidator;
 import com.virtual_paddock.backend.utils.exeption.BadRequestException;
 import com.virtual_paddock.backend.utils.exeption.ErrorMessages;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,18 @@ public class DriverServiceImpl implements IDriverService {
     private final DriverRepository driverRepository;
     private final TeamRepository teamRepository;
     private final DriverMapper driverMapper;
+    private final LeagueSecurityValidator leagueSecurityValidator;
+
+    private void verifyOwnership(Team team) {
+        if (team == null) return;
+        League league = team.getLeague();
+        if (league == null && team.getChampionship() != null) {
+            league = team.getChampionship().getLeague();
+        }
+        if (league != null) {
+            leagueSecurityValidator.verifyOwnershipOrSuperadmin(league);
+        }
+    }
 
     private Driver find(UUID id) {
         return this.driverRepository.findById(id).orElseThrow(() ->
@@ -37,6 +51,7 @@ public class DriverServiceImpl implements IDriverService {
     public DriverResponse create(DriverRequest request) {
         Team team = teamRepository.findById(request.getTeamId())
                 .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Team")));
+        verifyOwnership(team);
 
         int limit = (team.getMaxDrivers() != null && team.getMaxDrivers() > 0)
                 ? team.getMaxDrivers()
@@ -129,10 +144,12 @@ public class DriverServiceImpl implements IDriverService {
     @Override
     public DriverResponse update(UUID id, DriverUpdate update) {
         Driver driver = find(id);
+        verifyOwnership(driver.getTeam());
 
         if (update.getTeamId() != null && (driver.getTeam() == null || !driver.getTeam().getId().equals(update.getTeamId()))) {
             Team team = teamRepository.findById(update.getTeamId())
                     .orElseThrow(() -> new BadRequestException(ErrorMessages.IdNotFound("Team")));
+            verifyOwnership(team);
             int limit = (team.getMaxDrivers() != null && team.getMaxDrivers() > 0)
                     ? team.getMaxDrivers()
                     : (team.getChampionship() != null && team.getChampionship().getMaxDriversPerTeam() != null
@@ -152,6 +169,7 @@ public class DriverServiceImpl implements IDriverService {
     @Override
     public void delete(UUID id) {
         Driver driver = find(id);
+        verifyOwnership(driver.getTeam());
         driverRepository.delete(driver);
     }
 }
